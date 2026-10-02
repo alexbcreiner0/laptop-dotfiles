@@ -1,25 +1,28 @@
-import sublime
+from __future__ import annotations
+from contextlib import contextmanager
+from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable
+    from typing import Any, TypeVar
+    from sublime_types import Value
+
+    EnumType = TypeVar('EnumType', bound=Enum)
 
 import inspect
-from contextlib import contextmanager
+import sublime
 
-from ._compat.enum import Enum
 from ._util.enum import ExtensibleConstructorMeta, construct_with_alternatives
-from .syntax import get_syntax_for_scope
 from .encodings import to_sublime
-
-from ._compat.typing import Any, Optional, Mapping, Iterable, Generator, Type, TypeVar
-
-
-EnumType = TypeVar('EnumType', bound=Enum)
-
+from .syntax import get_syntax_for_scope
 
 __all__ = [
     'LineEnding', 'new_view', 'close_view',
 ]
 
 
-def case_insensitive_value(cls: Type[EnumType], value: str) -> Optional[EnumType]:
+def case_insensitive_value(cls: type[EnumType], value: str) -> EnumType | None:
     return next((
         member for name, member in cls.__members__.items()
         if name.lower() == value.lower()
@@ -117,20 +120,6 @@ def _temporarily_scratch_unsaved_views(
             view.set_scratch(False)
 
 
-def _clone_view(view: sublime.View) -> sublime.View:
-    window = view.window()
-    if window is None:  # pragma: no cover
-        raise ValueError("View has no window.")
-
-    window.focus_view(view)
-    window.run_command('clone_file')
-    clone = window.active_view()
-    if clone is None:  # pragma: no cover
-        raise RuntimeError("Clone was not created.")
-
-    return clone
-
-
 def close_view(view: sublime.View, *, force: bool = False) -> None:
     """Close the given view, discarding unsaved changes if `force` is ``True``.
 
@@ -154,7 +143,7 @@ def close_view(view: sublime.View, *, force: bool = False) -> None:
         raise ValueError('The view could not be closed.')
 
 
-def validate_view_options(options: Mapping[str, Any]) -> None:
+def validate_view_options(options: dict[str, Value]) -> None:
     unknown = set(options) - VIEW_OPTIONS
     if unknown:
         raise ValueError('Unknown view options: %s.' % ', '.join(list(unknown)))
@@ -169,16 +158,16 @@ def validate_view_options(options: Mapping[str, Any]) -> None:
 def set_view_options(
     view: sublime.View,
     *,
-    name: Optional[str] = None,
-    settings: Optional[dict] = None,
-    read_only: Optional[bool] = None,
-    scratch: Optional[bool] = None,
-    overwrite: Optional[bool] = None,
-    syntax: Optional[str] = None,
-    scope: Optional[str] = None,
-    encoding: Optional[str] = None,
-    content: Optional[str] = None,
-    line_endings: Optional[str] = None
+    name: str | None = None,
+    settings: dict[str, Value] | None = None,
+    read_only: bool | None = None,
+    scratch: bool | None = None,
+    overwrite: bool | None = None,
+    syntax: str | None = None,
+    scope: str | None = None,
+    encoding: str | None = None,
+    content: str | None = None,
+    line_endings: str | None = None
 ) -> None:
     if name is not None:
         view.set_name(name)

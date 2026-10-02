@@ -1,24 +1,24 @@
-import sublime
-
-from uuid import uuid4
+from __future__ import annotations
 from functools import partial
-from collections.abc import Mapping
+from typing import TYPE_CHECKING
+from uuid import uuid4
+
+import sublime
 
 from ._util.collections import get_selector
 from ._util.named_value import NamedValue
 
-from ._compat.typing import Any, Callable, Iterable, NoReturn, TypeVar, Union, Mapping as _Mapping
-
-_Default = TypeVar('_Default')
-Value = Union[bool, int, float, str, list, dict, None]
-
 __all__ = ['SettingsDict', 'NamedSettingsDict']
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+    from sublime_types import Value
+    from typing import Callable
 
 _NO_DEFAULT = NamedValue('SettingsDict.NO_DEFAULT')
 
 
-class SettingsDict():
+class SettingsDict:
     """Wraps a :class:`sublime.Settings` object `settings`
     with a :class:`dict`-like interface.
 
@@ -40,12 +40,12 @@ class SettingsDict():
     methods on the :class:`~collections.ChainMap` will raise an error.
     """
 
-    NO_DEFAULT = _NO_DEFAULT
+    NO_DEFAULT: NamedValue = _NO_DEFAULT
 
     def __init__(self, settings: sublime.Settings):
-        self.settings = settings
+        self.settings: sublime.Settings = settings
 
-    def __iter__(self) -> NoReturn:
+    def __iter__(self) -> None:
         """Raise NotImplementedError."""
         raise NotImplementedError()
 
@@ -54,7 +54,7 @@ class SettingsDict():
         and refer to the same underlying settings data.
         """
         return (
-            type(self) == type(other)
+            type(self) is type(other)
             and isinstance(other, SettingsDict)
             and self.settings.settings_id == other.settings.settings_id
         )
@@ -100,16 +100,14 @@ class SettingsDict():
         """Return ``True`` if `self` has a setting named `key`, else ``False``."""
         return self.settings.has(item)
 
-    def get(self, key: str, default: _Default = None) -> Union[Value, _Default]:
+    def get(self, key: str, default: Value | None = None) -> Value:
         """Return the value for `key` if `key` is in the dictionary, or `default` otherwise.
 
         If `default` is not given, it defaults to ``None``,
         so that this method never raises :exc:`KeyError`."""
         return self.settings.get(key, default)
 
-    def pop(
-        self, key: str, default: Union[_Default, NamedValue] = _NO_DEFAULT
-    ) -> Union[Value, _Default]:
+    def pop(self, key: str, default: Value | NamedValue = _NO_DEFAULT) -> Value:
         """Remove the setting `self[key]` and return its value or `default`.
 
         :raise KeyError: if `key` is not in the dictionary
@@ -138,7 +136,7 @@ class SettingsDict():
 
     def update(
         self,
-        other: Union[_Mapping[str, Value], Iterable[Iterable[str]]] = [],
+        other: dict[str, Value] | Iterable[Iterable[str]] = [],
         **kwargs: Value
     ) -> None:
         """Update the dictionary with the key/value pairs from `other`,
@@ -156,11 +154,14 @@ class SettingsDict():
         for key, value in other:
             self[key] = value
 
-        for key, value in kwargs.items():
+        for key, value in kwargs.items():  # type: ignore
             self[key] = value
 
     def subscribe(
-        self, selector: Any, callback: Callable, default_value: Any = None
+        self,
+        selector: Callable[[Mapping[str, Value]], Value] | Iterable[str] | str,
+        callback: Callable[[Value, Value], None],
+        default_value: Value = None
     ) -> Callable[[], None]:
         """Register a callback to be invoked
         when the value derived from the settings object changes
@@ -185,13 +186,13 @@ class SettingsDict():
         ..  versionchanged:: 1.1
             Return an unsubscribe callback.
         """
-        selector_fn = get_selector(selector)
+        selector_fn = get_selector(selector, default_value)
 
-        saved_value = selector_fn(self)
+        saved_value = selector_fn(self)  # type: ignore
 
         def onchange() -> None:
             nonlocal saved_value
-            new_value = selector_fn(self)
+            new_value = selector_fn(self)  # type: ignore
 
             if new_value != saved_value:
                 previous_value = saved_value

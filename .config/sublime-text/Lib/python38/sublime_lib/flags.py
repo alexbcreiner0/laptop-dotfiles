@@ -26,18 +26,16 @@ Descendants of :class:`IntFlag` accept zero or more arguments:
     Constructors accept member names
     and `IntFlag` constructors accept multiple arguments.
 """
-
-import sublime
-
-from ._compat.enum import IntEnum, IntFlag, EnumMeta
+from __future__ import annotations
+from enum import IntEnum, IntFlag, EnumMeta
 from inspect import getdoc, cleandoc
+from typing import Callable
 
 import operator
 import re
+import sublime
 
 from ._util.enum import ExtensibleConstructorMeta, construct_union, construct_with_alternatives
-
-from ._compat.typing import Callable, Optional
 
 
 __all__ = [
@@ -47,7 +45,7 @@ __all__ = [
 ]
 
 
-def autodoc(prefix: Optional[str] = None) -> Callable[[EnumMeta], EnumMeta]:
+def autodoc(prefix: str | None = None) -> Callable[[EnumMeta], EnumMeta]:
     if prefix is None:
         prefix_str = ''
     else:
@@ -55,10 +53,10 @@ def autodoc(prefix: Optional[str] = None) -> Callable[[EnumMeta], EnumMeta]:
 
     def decorator(enum: EnumMeta) -> EnumMeta:
         enum.__doc__ = (getdoc(enum) or '') + '\n\n' + '\n'.join([
-            cleandoc("""
+            cleandoc(f"""
             .. py:attribute:: {name}
-                :annotation: = sublime.{pre}{name}
-            """).format(name=name, pre=prefix_str) for name in enum.__members__
+                :annotation: = sublime.{prefix_str}{name}
+            """) for name in enum.__members__
         ])
 
         return enum
@@ -76,6 +74,9 @@ construct_from_name = construct_with_alternatives(
 class DialogResult(IntEnum):
     """
     An :class:`~enum.IntEnum` for use with :func:`sublime.yes_no_cancel_dialog`.
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.DialogResult` instead, for plugins targetting ST4135+.
     """
     CANCEL = sublime.DIALOG_CANCEL
     YES = sublime.DIALOG_YES
@@ -92,7 +93,11 @@ class PointClass(IntFlag, metaclass=ExtensibleConstructorMeta):
     - :meth:`~sublime.View.classify`
     - :meth:`~sublime.View.find_by_class`
     - :meth:`~sublime.View.expand_by_class`
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.PointClassification` instead, for plugins targetting ST4135+.
     """
+    NONE = 0
     WORD_START = sublime.CLASS_WORD_START
     WORD_END = sublime.CLASS_WORD_END
     PUNCTUATION_START = sublime.CLASS_PUNCTUATION_START
@@ -113,9 +118,16 @@ class FindOption(IntFlag, metaclass=ExtensibleConstructorMeta):
 
     - :meth:`~sublime.View.find`
     - :meth:`~sublime.View.find_all`
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.FindFlags` instead, for plugins targetting ST4135+.
     """
+    NONE = 0
     LITERAL = sublime.LITERAL
     IGNORECASE = sublime.IGNORECASE
+    WHOLEWORD = 4  # = sublime.WHOLEWORD
+    REVERSE = 8  # = sublime.REVERSE
+    WRAP = 16  # = sublime.WRAP
 
 
 @autodoc()
@@ -124,7 +136,11 @@ class FindOption(IntFlag, metaclass=ExtensibleConstructorMeta):
 class RegionOption(IntFlag, metaclass=ExtensibleConstructorMeta):
     """
     An :class:`~enum.IntFlag` for use with :meth:`sublime.View.add_regions`.
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.FindFlags` instead, for plugins targetting ST4135+.
     """
+    NONE = 0
     DRAW_EMPTY = sublime.DRAW_EMPTY
     HIDE_ON_MINIMAP = sublime.HIDE_ON_MINIMAP
     DRAW_EMPTY_AS_OVERWRITE = sublime.DRAW_EMPTY_AS_OVERWRITE
@@ -135,6 +151,7 @@ class RegionOption(IntFlag, metaclass=ExtensibleConstructorMeta):
     DRAW_SQUIGGLY_UNDERLINE = sublime.DRAW_SQUIGGLY_UNDERLINE
     PERSISTENT = sublime.PERSISTENT
     HIDDEN = sublime.HIDDEN
+    NO_UNDO = sublime.NO_UNDO
 
 
 @autodoc()
@@ -143,10 +160,16 @@ class RegionOption(IntFlag, metaclass=ExtensibleConstructorMeta):
 class PopupOption(IntFlag, metaclass=ExtensibleConstructorMeta):
     """
     An :class:`~enum.IntFlag` for use with :meth:`sublime.View.show_popup`.
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.PopupFlags` instead, for plugins targetting ST4135+.
     """
+    NONE = 0
     COOPERATE_WITH_AUTO_COMPLETE = sublime.COOPERATE_WITH_AUTO_COMPLETE
     HIDE_ON_MOUSE_MOVE = sublime.HIDE_ON_MOUSE_MOVE
     HIDE_ON_MOUSE_MOVE_AWAY = sublime.HIDE_ON_MOUSE_MOVE_AWAY
+    KEEP_ON_SELECTION_MODIFIED = sublime.KEEP_ON_SELECTION_MODIFIED
+    HIDE_ON_CHARACTER_EVENT = sublime.HIDE_ON_CHARACTER_EVENT
 
 
 @autodoc('LAYOUT')
@@ -155,6 +178,9 @@ class PopupOption(IntFlag, metaclass=ExtensibleConstructorMeta):
 class PhantomLayout(IntFlag, metaclass=ExtensibleConstructorMeta):
     """
     An :class:`~enum.IntFlag` for use with :class:`sublime.Phantom`.
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.PhantomLayout` instead, for plugins targetting ST4135+.
     """
     INLINE = sublime.LAYOUT_INLINE
     BELOW = sublime.LAYOUT_BELOW
@@ -167,9 +193,21 @@ class PhantomLayout(IntFlag, metaclass=ExtensibleConstructorMeta):
 class OpenFileOption(IntFlag, metaclass=ExtensibleConstructorMeta):
     """
     An :class:`~enum.IntFlag` for use with :meth:`sublime.Window.open_file`.
+
+    .. versionadded:: 1.6 FORCE_GROUP
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.NewFileFlags` instead, for plugins targetting ST4135+.
     """
+    NONE = 0
     ENCODED_POSITION = sublime.ENCODED_POSITION
     TRANSIENT = sublime.TRANSIENT
+    FORCE_GROUP = sublime.FORCE_GROUP
+    SEMI_TRANSIENT = sublime.SEMI_TRANSIENT
+    ADD_TO_SELECTION = sublime.ADD_TO_SELECTION
+    REPLACE_MRU = sublime.REPLACE_MRU
+    CLEAR_TO_RIGHT = sublime.CLEAR_TO_RIGHT
+    FORCE_CLONE = 256  # = sublime.FORCE_CLONE
 
 
 @autodoc()
@@ -178,9 +216,14 @@ class OpenFileOption(IntFlag, metaclass=ExtensibleConstructorMeta):
 class QuickPanelOption(IntFlag, metaclass=ExtensibleConstructorMeta):
     """
     An :class:`~enum.IntFlag` for use with :meth:`sublime.Window.show_quick_panel`.
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.QuickPanelFlags` instead, for plugins targetting ST4135+.
     """
+    NONE = 0
     MONOSPACE_FONT = sublime.MONOSPACE_FONT
     KEEP_OPEN_ON_FOCUS_LOST = sublime.KEEP_OPEN_ON_FOCUS_LOST
+    WANT_EVENT = sublime.WANT_EVENT
 
 
 @autodoc('HOVER')
@@ -191,6 +234,9 @@ class HoverLocation(IntEnum):
     :func:`sublime_plugin.EventListener.on_hover`.
 
     .. versionadded:: 1.4
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.HoverZone` instead, for plugins targetting ST4135+.
     """
     TEXT = sublime.HOVER_TEXT
     GUTTER = sublime.HOVER_GUTTER
@@ -198,7 +244,7 @@ class HoverLocation(IntEnum):
 
 
 def regex_match(value: str, operand: str) -> bool:
-    expr = r'(?:{})\Z'.format(operand)
+    expr = rf"(?:{operand})\Z"
     return re.match(expr, value) is not None
 
 
@@ -222,6 +268,9 @@ class QueryContextOperator(IntEnum):
     :func:`sublime_plugin.EventListener.on_query_context`.
 
     .. versionadded:: 1.4
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.QueryOperator` instead, for plugins targetting ST4135+.
 
     .. py:method:: apply(value, operand)
 
@@ -252,12 +301,10 @@ class QueryContextOperator(IntEnum):
     REGEX_CONTAINS = (sublime.OP_REGEX_CONTAINS, regex_contains)
     NOT_REGEX_CONTAINS = (sublime.OP_NOT_REGEX_CONTAINS, not_regex_contains)
 
-    # _apply_ = None  # type: Callable[[str, str], bool]
-
-    def __new__(cls, value: int, operator: Callable[[str, str], bool]) -> 'QueryContextOperator':
-        obj = int.__new__(cls, value)  # type: ignore
-        obj._value_ = value
-        obj._apply_ = operator
+    def __new__(cls, value: int, operator: Callable[[str, str], bool]) -> QueryContextOperator:
+        obj = int.__new__(cls, value)
+        setattr(obj, '_value_', value)
+        setattr(obj, '_apply_', operator)
         return obj
 
     def apply(self, value: str, operand: str) -> bool:
@@ -273,6 +320,12 @@ class CompletionOptions(IntFlag, metaclass=ExtensibleConstructorMeta):
     :func:`sublime_plugin.EventListener.on_query_completions`.
 
     .. versionadded:: 1.4
+
+    .. deprecated:: 2.1
+        Use :class:`sublime.AutoCompleteFlags` instead, for plugins targetting ST4135+.
     """
+    NONE = 0
     INHIBIT_WORD_COMPLETIONS = sublime.INHIBIT_WORD_COMPLETIONS
     INHIBIT_EXPLICIT_COMPLETIONS = sublime.INHIBIT_EXPLICIT_COMPLETIONS
+    DYNAMIC_COMPLETIONS = sublime.DYNAMIC_COMPLETIONS
+    INHIBIT_REORDER = sublime.INHIBIT_REORDER

@@ -1,12 +1,13 @@
+from __future__ import annotations
+from collections.abc import Generator
+from contextlib import contextmanager
+from io import SEEK_SET, SEEK_CUR, SEEK_END, TextIOBase
+from typing import Any
+
 import sublime
 from sublime import Region
 
-from contextlib import contextmanager
-from io import SEEK_SET, SEEK_CUR, SEEK_END, TextIOBase
-
 from ._util.guard import define_guard
-
-from ._compat.typing import Any, Generator
 
 
 class ViewStream(TextIOBase):
@@ -75,13 +76,13 @@ class ViewStream(TextIOBase):
     def __init__(
         self, view: sublime.View, *, force_writes: bool = False, follow_cursor: bool = False
     ):
-        self.view = view
-        self.force_writes = force_writes
-        self.follow_cursor = follow_cursor
+        self.view: sublime.View = view
+        self.force_writes: bool = force_writes
+        self.follow_cursor: bool = follow_cursor
 
     @guard_validity
     @guard_selection
-    def read(self, size: int = -1) -> str:
+    def read(self, size: int | None = -1) -> str:
         """Read and return at most `size` characters from the stream as a single :class:`str`.
 
         If `size` is negative or None, read until EOF.
@@ -96,13 +97,16 @@ class ViewStream(TextIOBase):
 
     @guard_validity
     @guard_selection
-    def readline(self, size: int = -1) -> str:
+    def readline(self, size: int | None = -1) -> str:
         """Read and return one line from the stream, to a maximum of `size` characters.
 
         If the stream is already at EOF, return an empty string.
         """
         begin = self._tell()
         end = self.view.full_line(begin).end()
+
+        if size is None:
+            size = -1
 
         return self._read(begin, end, size)
 
@@ -169,14 +173,14 @@ class ViewStream(TextIOBase):
         return self._tell()
 
     @guard_validity
-    def seek_start(self) -> None:
+    def seek_start(self) -> int:
         """Move the cursor in the view to before the first character."""
-        self._seek(0)
+        return self._seek(0)
 
     @guard_validity
-    def seek_end(self) -> None:
+    def seek_end(self) -> int:
         """Move the cursor in the view to after the last character."""
-        self._seek(self.view.size())
+        return self._seek(self.view.size())
 
     @guard_validity
     @guard_selection

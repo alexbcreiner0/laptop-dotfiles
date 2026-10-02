@@ -9,7 +9,7 @@ while IFS= read -r line; do
 done < ~/.cache/wal/colors
 # echo "Old colors: ${old_colors[@]}"
 
-wal -i $1
+wal -i "$1"
 sed -i 's/#//' ~/.cache/wal/colors-hyprland.conf
 
 new_colors=()

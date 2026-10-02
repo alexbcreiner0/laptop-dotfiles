@@ -26,16 +26,16 @@ return {
         --     })
         -- end
     },
-    {
-        'mfussenegger/nvim-dap-python',
-        ft = 'python',
-        dependencies = {
-            'mfussenegger/nvim-dap'
-        },
-        config = function()
-            require('dap-python').setup('/usr/bin/python3') -- change to virtual environment python once you figure that stuff out
-        end
-    },
+    -- {
+    --     'mfussenegger/nvim-dap-python',
+    --     ft = 'python',
+    --     dependencies = {
+    --         'mfussenegger/nvim-dap'
+    --     },
+    --     config = function()
+    --         require('dap-python').setup('/usr/bin/python3') -- change to virtual environment python once you figure that stuff out
+    --     end
+    -- },
     {
         'rcarriga/nvim-dap-ui',
         event = 'VeryLazy',

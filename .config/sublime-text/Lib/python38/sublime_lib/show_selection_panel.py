@@ -1,11 +1,11 @@
+from __future__ import annotations
+from collections.abc import Sequence
+from typing import Callable, TypeVar
+
 import sublime
 
-from ._util.collections import isiterable
 from ._util.named_value import NamedValue
 from .flags import QuickPanelOption
-from collections.abc import Sequence
-
-from ._compat.typing import Any, Callable, List, Optional, TypeVar, Union, Sequence as _Sequence
 
 _ItemType = TypeVar('_ItemType')
 
@@ -17,14 +17,14 @@ NO_SELECTION = NamedValue('NO_SELECTION')
 
 def show_selection_panel(
     window: sublime.Window,
-    items: _Sequence[_ItemType],
+    items: Sequence[_ItemType],
     *,
-    flags: Any = 0,
-    labels: Union[_Sequence[object], Callable[[_ItemType], object]] = None,
-    selected: Union[NamedValue, _ItemType] = NO_SELECTION,
-    on_select: Optional[Callable[[_ItemType], object]] = None,
-    on_cancel: Optional[Callable[[], object]] = None,
-    on_highlight: Optional[Callable[[_ItemType], object]] = None
+    flags: QuickPanelOption = QuickPanelOption.NONE,
+    labels: Sequence[object] | Callable[[_ItemType], object] | None = None,
+    selected: NamedValue | _ItemType = NO_SELECTION,
+    on_select: Callable[[_ItemType], None] | None = None,
+    on_cancel: Callable[[], None] | None = None,
+    on_highlight: Callable[[_ItemType], None] | None = None
 ) -> None:
     """Open a quick panel in the given window to select an item from a list.
 
@@ -91,7 +91,7 @@ def show_selection_panel(
     elif len(items) != len(labels):
         raise ValueError("The lengths of `items` and `labels` must match.")
 
-    def normalize_label(label: object) -> List[str]:
+    def normalize_label(label: object) -> list[str]:
         if isinstance(label, Sequence) and not isinstance(label, str):
             return list(map(str, label))
         else:
@@ -113,21 +113,20 @@ def show_selection_panel(
     else:
         selected_index = items.index(selected)
 
-    on_highlight_callback = None
-    if on_highlight:
-        on_highlight_callback = lambda index: on_highlight(items[index])
+    on_highlight_callback: Callable[[int], None] = \
+        lambda index: on_highlight(items[index]) if on_highlight else None
 
-    if isiterable(flags) and not isinstance(flags, str):
-        flags = QuickPanelOption(*flags)
-    else:
+    if isinstance(flags, str):
         flags = QuickPanelOption(flags)
+    else:
+        flags = QuickPanelOption(*flags)
 
     # The signature in the API docs is wrong.
     # See https://github.com/SublimeTextIssues/Core/issues/2290
     window.show_quick_panel(
         items=label_strings,
         on_select=on_done,
-        flags=flags,
+        flags=flags,  # type: ignore
         selected_index=selected_index,
         on_highlight=on_highlight_callback
     )

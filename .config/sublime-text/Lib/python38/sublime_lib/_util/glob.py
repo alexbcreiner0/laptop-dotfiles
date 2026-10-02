@@ -1,7 +1,8 @@
-import re
+from __future__ import annotations
 from functools import lru_cache
+from typing import Callable
 
-from .._compat.typing import Callable
+import re
 
 __all__ = ['get_glob_matcher']
 

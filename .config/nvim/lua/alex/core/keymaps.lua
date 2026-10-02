@@ -5,9 +5,9 @@ local buildable_filetypes = {"python", "lua", "tex"}
 local tree_mode = "side-bar"
 local globals = require('modules.globals')
 
-keymap.set('c', 'W', 'w', { noremap = true, silent = true, desc = "Write buffer" })
-keymap.set('c', 'Q', 'q', { noremap = true, silent = true, desc = "Quit buffer" })
-keymap.set('c', 'WQ', 'wq', { noremap = true, silent = true, desc = "Write and quit buffer" })
+-- keymap.set('c', 'W', 'w', { noremap = true, silent = true, desc = "Write buffer" })
+-- keymap.set('c', 'Q', 'q', { noremap = true, silent = true, desc = "Quit buffer" })
+-- keymap.set('c', 'WQ', 'wq', { noremap = true, silent = true, desc = "Write and quit buffer" })
 
 keymap.set('n', '<leader>rc', globals.source_config, { desc = "Resource config files" })
 keymap.set('n', '<leader>tt', globals.toggle_transparency, { desc = "Toggle transparency" })
@@ -115,6 +115,8 @@ keymap.set('n', "<leader>tn", "<cmd>tabn<cr>", { desc = "Go to next tab", silent
 keymap.set('n', "<leader>tp", "<cmd>tabp<cr>",  { desc = "Go to previous tab", silent = true }) -- tab prev
 keymap.set('n', "<leader>tm", "<cmd>tabnew %<cr>", { desc = "Open current buffer in new tab", silent = true }) --tab migrate
 
+keymap.set({'n', 't'}, '<leader>tb', '<cmd>lua toggle_terminal()<cr>', { desc = "Toggle persistent terminal", silent = true })
+
 -- Telescope fuzzy finder
 keymap.set('n', '<leader>ff', ':Telescope find_files<cr>', { desc = "Find files", silent = true })
 keymap.set('n', '<leader>fF', ':Telescope find_files hidden=true<cr>', { desc = "Find files", silent = true })
@@ -127,6 +129,117 @@ keymap.set('n', '<leader>fc', '<cmd>Telescope grep_string<cr>', { desc = "Find s
 keymap.set('n', '<leader>ft', '<cmd>TodoTelescope<cr>', { desc = "Find todos" })
 -- Should be control+d causes telescope to delete the buffer but it doesn't seem to be working
 keymap.set('n', '<leader>bd', '<cmd>bd<cr>', { desc = 'Delete buffer' })
+
+vim.keymap.set("n", "<leader>jp", function()
+  local line = vim.fn.getline(".")
+  if not line or line == "" then return end
+
+  local py = [[
+import json, sys
+
+raw = sys.stdin.read().strip()
+if not raw:
+    sys.exit(0)
+
+try:
+    obj = json.loads(raw)
+except Exception as e:
+    print("Failed to parse JSON:", e)
+    print("--- raw line ---")
+    print(raw)
+    sys.exit(2)
+
+def pick(d, *keys, default=""):
+    for k in keys:
+        if k in d and d[k] is not None:
+            return d[k]
+    return default
+
+def normalize(x):
+    # Convert literal backslash-n sequences into real newlines, recursively.
+    if isinstance(x, str):
+        return x.replace("\\r\\n", "\n").replace("\\n", "\n")
+    if isinstance(x, list):
+        return [normalize(v) for v in x]
+    if isinstance(x, dict):
+        return {k: normalize(v) for k, v in x.items()}
+    return x
+
+obj = normalize(obj)
+
+ts   = pick(obj, "timestamp", "asctime", "time")
+lvl  = pick(obj, "level", "levelname", "severity")
+name = pick(obj, "logger", "name")
+msg  = pick(obj, "message", "msg")
+
+out = []
+hdr = " | ".join([x for x in (ts, lvl, name) if x])
+if hdr:
+    out.append(hdr)
+    out.append("-" * min(len(hdr), 120))
+
+if msg:
+    out.extend(str(msg).splitlines())
+else:
+    out.append("(no message)")
+
+extra = obj.get("extra")
+if extra:
+    out.append("")
+    out.append("EXTRA")
+    out.append("-----")
+    # pretty JSON, but keep multi-line strings as actual multi-line
+    out.append(json.dumps(extra, indent=2, sort_keys=True, ensure_ascii=False))
+
+# If your formatter also includes exception text at top-level, show it nicely too
+exc = obj.get("exc_info") or obj.get("exception") or obj.get("traceback")
+if exc:
+    out.append("")
+    out.append("EXCEPTION")
+    out.append("---------")
+    out.extend(str(exc).splitlines())
+
+print("\n".join(out))
+]]
+
+  local content = vim.fn.system({ "python3", "-c", py }, line)
+  if vim.v.shell_error ~= 0 then
+    vim.notify("Failed to parse JSON on this line", vim.log.levels.ERROR)
+    return
+  end
+
+  local lines = vim.split(content, "\n", { plain = true })
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].bufhidden = "wipe"
+  vim.bo[buf].filetype = "text"
+  vim.bo[buf].modifiable = false
+
+  local ui = vim.api.nvim_list_uis()[1]
+  local width = math.floor(ui.width * 0.80)
+  local height = math.floor(ui.height * 0.80)
+  local row = math.floor((ui.height - height) / 2)
+  local col = math.floor((ui.width - width) / 2)
+
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = "editor",
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    style = "minimal",
+    border = "rounded",
+  })
+
+  vim.keymap.set("n", "q", function() pcall(vim.api.nvim_win_close, win, true) end,
+    { buffer = buf, nowait = true, silent = true })
+  vim.keymap.set("n", "<Esc>", function() pcall(vim.api.nvim_win_close, win, true) end,
+    { buffer = buf, nowait = true, silent = true })
+
+  vim.api.nvim_win_set_option(win, "wrap", true)
+  vim.api.nvim_win_set_option(win, "cursorline", false)
+end, { desc = "View JSONL message (+ extra) in floating window" })
 
 -- LSP 
 vim.api.nvim_create_autocmd("LspAttach", {
@@ -254,26 +367,49 @@ function build_in_vim()
         vim.cmd('resize 17')
         vim.cmd('terminal' .. '!./' .. filepath)
         vim.cmd('startinsert')
-    elseif filetype == 'c' then
+    elseif filetype == 'c' or filetype == 'cpp' then
         vim.cmd('silent! w')
-        vim.cmd('silent! source %')
-        for _,buffer_number in ipairs(vim.api.nvim_list_bufs()) do
-            local type = vim.api.nvim_buf_get_option(buffer_number, 'buftype')
-            if type == 'terminal' then
-                vim.api.nvim_buf_delete(buffer_number, {force = true})
+
+        for _, buffer_number in ipairs(vim.api.nvim_list_bufs()) do
+            local buffer_type = vim.api.nvim_get_option_value(
+                'buftype',
+                { buf = buffer_number }
+            )
+            if buffer_type == 'terminal' then
+                vim.api.nvim_buf_delete(buffer_number, { force = true })
             end
         end
-        current_buffer = vim.api.nvim_get_current_buf()
+
+        local current_buffer = vim.api.nvim_get_current_buf()
         local filepath = vim.api.nvim_buf_get_name(current_buffer)
         local filename = vim.fn.fnamemodify(filepath, ':t:r')
         local output_path = vim.fn.fnamemodify(filepath, ':p:h') .. '/' .. filename
 
+        local compiler
+        local flags
+
+        if filetype == 'cpp' then
+            compiler = 'g++'
+            flags = '-std=c++17 -Wall -Wextra -Wpedantic -g'
+        else
+            compiler = 'gcc'
+            flags = '-std=c17 -Wall -Wextra -Wpedantic -g'
+        end
+
+        local command = table.concat({
+            compiler,
+            flags,
+            vim.fn.shellescape(filepath),
+            '-o',
+            vim.fn.shellescape(output_path),
+            '&&',
+            vim.fn.shellescape(output_path),
+        }, ' ')
+
         vim.cmd('split')
         vim.cmd('resize 17')
-        vim.cmd('terminal' .. ' gcc ' .. filepath .. ' -o ' .. output_path .. ' && ' .. output_path)
+        vim.cmd('terminal ' .. command)
         vim.cmd('startinsert')
-        -- Need to compile to a file of the same name
-        -- Then run it in terminal.
     end
 end
 
@@ -409,4 +545,42 @@ end
 --  gcc comments/uncomments a line, can type 9gcc to command 9 lines etc
 --  can also highling a block of code and type gc to toggle  
 --  gcap comments a paragraph, gcgc uncomments?
+
+
+local persistent_terminal_buf = nil
+
+function toggle_terminal()
+    -- If the terminal exists and is currently visible, hide it.
+    if persistent_terminal_buf
+        and vim.api.nvim_buf_is_valid(persistent_terminal_buf)
+    then
+        local win = vim.fn.bufwinid(persistent_terminal_buf)
+
+        if win ~= -1 then
+            vim.api.nvim_win_close(win, true)
+            return
+        end
+    end
+
+    -- Open the bottom split.
+    vim.cmd('botright split')
+    vim.cmd('resize 17')
+
+    -- Reuse the existing terminal if we have one.
+    if persistent_terminal_buf
+        and vim.api.nvim_buf_is_valid(persistent_terminal_buf)
+    then
+        vim.api.nvim_win_set_buf(0, persistent_terminal_buf)
+
+    -- Otherwise create a new terminal.
+    else
+        vim.cmd('terminal')
+        persistent_terminal_buf = vim.api.nvim_get_current_buf()
+
+        -- Don't destroy the buffer just because its window is closed.
+        vim.bo[persistent_terminal_buf].bufhidden = 'hide'
+    end
+
+    vim.cmd('startinsert')
+end
 

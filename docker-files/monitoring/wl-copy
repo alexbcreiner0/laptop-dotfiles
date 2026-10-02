@@ -1,0 +1,52 @@
+table ip libvirt_network {
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		counter packets 1306 bytes 78360 jump guest_cross
+		counter packets 1306 bytes 78360 jump guest_input
+		counter packets 1306 bytes 78360 jump guest_output
+	}
+
+	chain guest_output {
+		ip saddr 192.168.122.0/24 iif "virbr0" counter packets 0 bytes 0 accept
+		iif "virbr0" counter packets 0 bytes 0 reject
+	}
+
+	chain guest_input {
+		oif "virbr0" ip daddr 192.168.122.0/24 ct state established,related counter packets 0 bytes 0 accept
+		oif "virbr0" counter packets 0 bytes 0 reject
+	}
+
+	chain guest_cross {
+		iif "virbr0" oif "virbr0" counter packets 0 bytes 0 accept
+	}
+
+	chain guest_nat {
+		type nat hook postrouting priority srcnat; policy accept;
+		ip saddr 192.168.122.0/24 ip daddr 224.0.0.0/24 counter packets 2 bytes 108 return
+		ip saddr 192.168.122.0/24 ip daddr 255.255.255.255 counter packets 0 bytes 0 return
+		meta l4proto tcp ip saddr 192.168.122.0/24 ip daddr != 192.168.122.0/24 counter packets 0 bytes 0 masquerade to :1024-65535
+		meta l4proto udp ip saddr 192.168.122.0/24 ip daddr != 192.168.122.0/24 counter packets 0 bytes 0 masquerade to :1024-65535
+		ip saddr 192.168.122.0/24 ip daddr != 192.168.122.0/24 counter packets 0 bytes 0 masquerade
+	}
+}
+table ip6 libvirt_network {
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		counter packets 0 bytes 0 jump guest_cross
+		counter packets 0 bytes 0 jump guest_input
+		counter packets 0 bytes 0 jump guest_output
+	}
+
+	chain guest_output {
+	}
+
+	chain guest_input {
+	}
+
+	chain guest_cross {
+	}
+
+	chain guest_nat {
+		type nat hook postrouting priority srcnat; policy accept;
+	}
+}

@@ -1,54 +1,28 @@
+from __future__ import annotations
+from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
+from collections.abc import Iterable
+from pathlib import Path
+
+import os
+import posixpath
 import sublime
 
-import posixpath
-from collections import OrderedDict
-import os
-from abc import ABCMeta, abstractmethod
-
-from ._compat.pathlib import Path
 from ._util.glob import get_glob_matcher
 
-from ._compat.typing import List, Optional, Tuple, Iterable, Union
-
 __all__ = ['ResourcePath']
-
-
-def _abs_parts(path: Path) -> Tuple[str, ...]:
-    return (path.drive, path.root) + path.parts[1:]
-
-
-def _file_relative_to(path: Path, base: Path) -> Optional[Tuple[str, ...]]:
-    """
-    Like Path.relative_to, except:
-
-    - Both paths must be relative.
-    - `base` must be a single Path object.
-    - The error message is blank.
-    - Only a tuple of parts is returned.
-
-    Surprisingly, this is much, much faster.
-    """
-    child_parts = _abs_parts(path)
-    base_parts = _abs_parts(base)
-
-    n = len(base_parts)
-    cf = path._flavour.casefold_parts  # type: ignore
-
-    if cf(child_parts[:n]) != cf(base_parts):
-        return None
-
-    return child_parts[n:]
 
 
 class ResourceRoot(metaclass=ABCMeta):
     """
     Represents a directory containing packages.
     """
-    def __init__(self, root: object, path: Union[Path, str]) -> None:
-        self.resource_root = ResourcePath(root)
-        self.file_root = Path(path)
 
-    def resource_to_file_path(self, resource_path: object) -> Path:
+    def __init__(self, root: object, path: Path | str) -> None:
+        self.resource_root: ResourcePath = ResourcePath(root)
+        self.file_root: Path = Path(path)
+
+    def resource_to_file_path(self, resource_path: ResourcePath) -> Path:
         """
         Given a :class:`ResourcePath`,
         return the corresponding :class:`Path` within this resource root.
@@ -63,7 +37,7 @@ class ResourceRoot(metaclass=ABCMeta):
         else:
             return self._package_file_path(*parts)
 
-    def file_to_resource_path(self, file_path: Union[Path, str]) -> Optional['ResourcePath']:
+    def file_to_resource_path(self, file_path: Path | str) -> ResourcePath | None:
         """
         Given an absolute :class:`Path`,
         return the corresponging :class:`ResourcePath` within this resource root,
@@ -76,20 +50,18 @@ class ResourceRoot(metaclass=ABCMeta):
         if not file_path.is_absolute():
             raise ValueError("Cannot convert a relative file path to a resource path.")
 
-        parts = _file_relative_to(file_path, self.file_root)
-        if parts is None:
+        try:
+            relpath = file_path.relative_to(self.file_root)
+        except ValueError:
             return None
-        elif parts == ():
+
+        if not relpath.parts:
             return self.resource_root
-        else:
-            return self._package_resource_path(*parts)
+
+        return self._package_resource_path(*relpath.parts)
 
     @abstractmethod
-    def _package_file_path(
-        self,
-        package: str,
-        *parts: str
-    ) -> Path:  # pragma: no cover
+    def _package_file_path(self, package: str, *rest: str) -> Path:
         """
         Given a package name and zero or more path segments,
         return the corresponding :class:`Path` within this resource root.
@@ -97,11 +69,7 @@ class ResourceRoot(metaclass=ABCMeta):
         ...
 
     @abstractmethod
-    def _package_resource_path(
-        self,
-        package: str,
-        *parts: str
-    ) -> 'ResourcePath':  # pragma: no cover
+    def _package_resource_path(self, package: str, *rest: str) -> ResourcePath:
         """
         Given a package name and zero or more path segments,
         return the corresponding :class:`ResourcePath` within this resource root.
@@ -113,46 +81,48 @@ class DirectoryResourceRoot(ResourceRoot):
     """
     Represents a directory containing unzipped package directories.
     """
-    def _package_file_path(self, *parts: str) -> Path:
-        return self.file_root.joinpath(*parts)
 
-    def _package_resource_path(self, *parts: str) -> 'ResourcePath':
-        return self.resource_root.joinpath(*parts)
+    def _package_file_path(self, package: str, *rest: str) -> Path:
+        return self.file_root.joinpath(package, *rest)
+
+    def _package_resource_path(self, package: str, *rest: str) -> ResourcePath:
+        return self.resource_root.joinpath(package, *rest)
 
 
 class InstalledResourceRoot(ResourceRoot):
     """
     Represents a directory containing zipped sublime-package files.
     """
+
     def _package_file_path(self, package: str, *rest: str) -> Path:
         # This is not currently called because there are no installed-only roots.
         return self.file_root.joinpath(package + '.sublime-package', *rest)
 
-    def _package_resource_path(self, package: str, *rest: str) -> 'ResourcePath':
+    def _package_resource_path(self, package: str, *rest: str) -> ResourcePath:
         package_path = (self.resource_root / package).remove_suffix('.sublime-package')
         return package_path.joinpath(*rest)
 
 
-def wrap_path(p: Union[str, Path]) -> Path:
+def wrap_path(p: Path | str) -> Path:
     if isinstance(p, Path):
         return p
     else:
         return Path(p)
 
 
-_ROOTS = None  # type: Optional[List[ResourceRoot]]
+_roots: list[ResourceRoot] | None = None
 
 
-def get_roots() -> List[ResourceRoot]:
-    global _ROOTS
-    if _ROOTS is None:
-        _ROOTS = [
+def get_roots() -> list[ResourceRoot]:
+    global _roots
+    if _roots is None:
+        _roots = [
             DirectoryResourceRoot('Cache', sublime.cache_path()),
             DirectoryResourceRoot('Packages', sublime.packages_path()),
             InstalledResourceRoot('Packages', sublime.installed_packages_path()),
             InstalledResourceRoot('Packages', Path(sublime.executable_path()).parent / 'Packages'),
         ]
-    return _ROOTS
+    return _roots
 
 
 class ResourcePath():
@@ -189,7 +159,7 @@ class ResourcePath():
     """
 
     @classmethod
-    def glob_resources(cls, pattern: str) -> List['ResourcePath']:
+    def glob_resources(cls, pattern: str) -> list[ResourcePath]:
         """
         Find all resources that match the given pattern
         and return them as :class:`ResourcePath` objects.
@@ -201,7 +171,7 @@ class ResourcePath():
         ]
 
     @classmethod
-    def from_file_path(cls, file_path: Union[Path, str]) -> 'ResourcePath':
+    def from_file_path(cls, file_path: Path | str) -> ResourcePath:
         """
         Return a :class:`ResourcePath` corresponding to the given file path.
 
@@ -234,9 +204,7 @@ class ResourcePath():
         if path:
             return path
         else:
-            raise ValueError(
-                "Path {!r} does not correspond to any resource path.".format(file_path)
-            )
+            raise ValueError(f"Path {file_path!r} does not correspond to any resource path.")
 
     def __init__(self, *pathsegments: object):
         """
@@ -253,7 +221,7 @@ class ResourcePath():
         if self._parts == ():
             raise ValueError("Empty path.")
 
-    def _parse_segments(self, pathsegments: Iterable[object]) -> Tuple[str, ...]:
+    def _parse_segments(self, pathsegments: Iterable[object]) -> tuple[str, ...]:
         return tuple(
             part
             for segment in pathsegments if segment
@@ -264,7 +232,7 @@ class ResourcePath():
         return hash(self.parts)
 
     def __repr__(self) -> str:
-        return "{}({!r})".format(self.__class__.__name__, str(self))
+        return f"{self.__class__.__name__}({self!s})"
 
     def __str__(self) -> str:
         return '/'.join(self.parts)
@@ -272,18 +240,18 @@ class ResourcePath():
     def __eq__(self, other: object) -> bool:
         return isinstance(other, ResourcePath) and self._parts == other.parts
 
-    def __truediv__(self, other: object) -> 'ResourcePath':
+    def __truediv__(self, other: object) -> ResourcePath:
         return self.joinpath(other)
 
     @property
-    def parts(self) -> Tuple[str, ...]:
+    def parts(self) -> tuple[str, ...]:
         """
         A tuple giving access to the path’s various components.
         """
         return self._parts
 
     @property
-    def parent(self) -> 'ResourcePath':
+    def parent(self) -> ResourcePath:
         """
         The logical parent of the path. A root path is its own parent.
         """
@@ -293,7 +261,7 @@ class ResourcePath():
             return self.__class__(*self._parts[:-1])
 
     @property
-    def parents(self) -> Tuple['ResourcePath', ...]:
+    def parents(self) -> tuple[ResourcePath, ...]:
         """
         An immutable sequence providing access to the path's logical ancestors.
         """
@@ -323,7 +291,7 @@ class ResourcePath():
             return ''
 
     @property
-    def suffixes(self) -> List[str]:
+    def suffixes(self) -> list[str]:
         """
         A list of the final component's suffixes, if any.
         """
@@ -353,7 +321,7 @@ class ResourcePath():
         return self._parts[0]
 
     @property
-    def package(self) -> Optional[str]:
+    def package(self) -> str | None:
         """
         The name of the package the path is within,
         or ``None`` if the path is a root path.
@@ -373,13 +341,13 @@ class ResourcePath():
         match = get_glob_matcher(pattern)
         return match(str(self))
 
-    def joinpath(self, *other: object) -> 'ResourcePath':
+    def joinpath(self, *other: object) -> ResourcePath:
         """
         Combine this path with all of the given strings.
         """
         return self.__class__(self, *other)
 
-    def relative_to(self, *other: object) -> Tuple[str, ...]:
+    def relative_to(self, *other: object) -> tuple[str, ...]:
         """
         Compute a tuple `parts` of path components such that ``self == other.joinpath(*parts)``.
 
@@ -395,9 +363,9 @@ class ResourcePath():
         if other_path.parts == self._parts[:other_len]:
             return self._parts[other_len:]
         else:
-            raise ValueError("{!s} does not start with {!s}".format(self, other_path))
+            raise ValueError(f"{self!s} does not start with {other_path!s}")
 
-    def with_name(self, name: str) -> 'ResourcePath':
+    def with_name(self, name: str) -> ResourcePath:
         """
         Return a new path with the name changed.
         """
@@ -406,7 +374,7 @@ class ResourcePath():
         else:
             return self.parent / name
 
-    def add_suffix(self, suffix: str) -> 'ResourcePath':
+    def add_suffix(self, suffix: str) -> ResourcePath:
         """
         Return a new path with the suffix added.
 
@@ -415,8 +383,8 @@ class ResourcePath():
         return self.with_name(self.name + suffix)
 
     def remove_suffix(
-        self, suffix: Optional[str] = None, *, must_remove: bool = True
-    ) -> 'ResourcePath':
+        self, suffix: Iterable[str] | str | None = None, *, must_remove: bool = True
+    ) -> ResourcePath:
         """
         Return a new path with the suffix removed.
 
@@ -452,11 +420,11 @@ class ResourcePath():
         if new_name is not None:
             return self.with_name(new_name)
         elif must_remove:
-            raise ValueError('Cannot remove suffix {!r} from {!r}.'.format(suffix, self))
+            raise ValueError(f"Cannot remove suffix {suffix!r} from {self!r}.")
         else:
             return self
 
-    def with_suffix(self, suffix: str) -> 'ResourcePath':
+    def with_suffix(self, suffix: str) -> ResourcePath:
         """
         Return a new path with the suffix changed.
 
@@ -485,7 +453,7 @@ class ResourcePath():
             except ValueError:
                 continue
 
-        raise ValueError("Can't find a filesystem path for {!r}.".format(self.root)) from None
+        raise ValueError(f"Can't find a filesystem path for {self.root!r}.") from None
 
     def exists(self) -> bool:
         """
@@ -522,7 +490,7 @@ class ResourcePath():
         except IOError as err:
             raise FileNotFoundError(str(self)) from err
 
-    def glob(self, pattern: str) -> List['ResourcePath']:
+    def glob(self, pattern: str) -> list[ResourcePath]:
         """
         Glob the given pattern at this path, returning all matching resources.
 
@@ -531,7 +499,7 @@ class ResourcePath():
         base = '/' + str(self) + '/' if self._parts else ''
         return ResourcePath.glob_resources(base + pattern)
 
-    def rglob(self, pattern: str) -> List['ResourcePath']:
+    def rglob(self, pattern: str) -> list[ResourcePath]:
         """
         Shorthand for ``path.glob('**/' + pattern)``.
 
@@ -544,7 +512,7 @@ class ResourcePath():
 
         return self.glob('**/' + pattern)
 
-    def children(self) -> List['ResourcePath']:
+    def children(self) -> list[ResourcePath]:
         """
         Return a list of paths that are direct children of this path
         and point to a resource at or beneath that path.
@@ -583,7 +551,7 @@ class ResourcePath():
         with open(str(target), mode + 'b') as file:
             file.write(data)
 
-    def copytree(self, target: Union[Path, str], exist_ok: bool = False) -> None:
+    def copytree(self, target: Path | str, exist_ok: bool = False) -> None:
         """
         Copy all resources beneath this path into a directory tree rooted at `target`.
 

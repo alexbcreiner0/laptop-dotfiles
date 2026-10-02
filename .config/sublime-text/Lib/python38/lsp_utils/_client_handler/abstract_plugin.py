@@ -1,8 +1,11 @@
-from .._util import weak_method
+from __future__ import annotations
+
+from ..api_wrapper_interface import ApiNotificationHandler
+from ..api_wrapper_interface import ApiRequestHandler
 from ..api_wrapper_interface import ApiWrapperInterface
 from ..server_resource_interface import ServerStatus
-from .api_decorator import register_decorated_handlers
 from .interface import ClientHandlerInterface
+from abc import ABC
 from functools import partial
 from LSP.plugin import AbstractPlugin
 from LSP.plugin import ClientConfig
@@ -13,89 +16,94 @@ from LSP.plugin import Response
 from LSP.plugin import Session
 from LSP.plugin import unregister_plugin
 from LSP.plugin import WorkspaceFolder
-from LSP.plugin.core.rpc import method2attr
-from LSP.plugin.core.typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
+from LSP.plugin.core.rpc import method2attr  # pyright: ignore[reportPrivateLocalImportUsage]
 from os import path
+from typing import Any
+from typing import Callable
+from typing import TYPE_CHECKING
+from typing_extensions import override
 from weakref import ref
-import sublime
+from weakref import WeakMethod
+
+if TYPE_CHECKING:
+    import sublime
 
 __all__ = ['ClientHandler']
 
-LanguagesDict = TypedDict('LanguagesDict', {
-    'document_selector': Optional[str],
-    'languageId': Optional[str],
-    'scopes': Optional[List[str]],
-    'syntaxes': Optional[List[str]],
-}, total=False)
-ApiNotificationHandler = Callable[[Any], None]
-ApiRequestHandler = Callable[[Any, Callable[[Any], None]], None]
-
 
 class ApiWrapper(ApiWrapperInterface):
-    def __init__(self, plugin: 'ref[AbstractPlugin]'):
+    def __init__(self, plugin: ref[AbstractPlugin]) -> None:
         self.__plugin = plugin
 
-    def __session(self) -> Optional[Session]:
+    def __session(self) -> Session | None:
         plugin = self.__plugin()
         return plugin.weaksession() if plugin else None
 
     # --- ApiWrapperInterface -----------------------------------------------------------------------------------------
 
+    @override
     def on_notification(self, method: str, handler: ApiNotificationHandler) -> None:
-        def handle_notification(weak_handler: ApiNotificationHandler, params: Any) -> None:
-            weak_handler(params)
+        def handle_notification(weak_handler: WeakMethod[ApiNotificationHandler], params: Any) -> None:
+            if handler := weak_handler():
+                handler(params)
 
         plugin = self.__plugin()
         if plugin:
-            setattr(plugin, method2attr(method), partial(handle_notification, weak_method(handler)))
+            setattr(plugin, method2attr(method), partial(handle_notification, WeakMethod(handler)))
 
+    @override
     def on_request(self, method: str, handler: ApiRequestHandler) -> None:
         def send_response(request_id: Any, result: Any) -> None:
             session = self.__session()
             if session:
                 session.send_response(Response(request_id, result))
 
-        def on_response(weak_handler: ApiRequestHandler, params: Any, request_id: Any) -> None:
-            weak_handler(params, lambda result: send_response(request_id, result))
+        def on_response(weak_handler: WeakMethod[ApiRequestHandler], params: Any, request_id: Any) -> None:
+            if handler := weak_handler():
+                handler(params, lambda result: send_response(request_id, result))
 
         plugin = self.__plugin()
         if plugin:
-            setattr(plugin, method2attr(method), partial(on_response, weak_method(handler)))
+            setattr(plugin, method2attr(method), partial(on_response, WeakMethod(handler)))
 
+    @override
     def send_notification(self, method: str, params: Any) -> None:
         session = self.__session()
         if session:
             session.send_notification(Notification(method, params))
 
+    @override
     def send_request(self, method: str, params: Any, handler: Callable[[Any, bool], None]) -> None:
         session = self.__session()
         if session:
-            session.send_request(
-                Request(method, params), lambda result: handler(result, False), lambda result: handler(result, True))
+            request: Request[Any, Any] = Request(method, params)
+            session.send_request(request, lambda result: handler(result, False), lambda result: handler(result, True))  # noqa: FBT003
         else:
-            handler(None, True)
+            handler(None, True)  # noqa: FBT003
 
 
-class ClientHandler(AbstractPlugin, ClientHandlerInterface):
-    """
-    The base class for creating an LSP plugin.
-    """
+class ClientHandler(AbstractPlugin, ClientHandlerInterface, ABC):
+    """The base class for creating an LSP plugin."""
 
     # --- AbstractPlugin handlers -------------------------------------------------------------------------------------
 
     @classmethod
+    @override
     def name(cls) -> str:
         return cls.get_displayed_name()
 
     @classmethod
-    def configuration(cls) -> Tuple[sublime.Settings, str]:
+    @override
+    def configuration(cls) -> tuple[sublime.Settings, str]:
         return cls.read_settings()
 
     @classmethod
-    def additional_variables(cls) -> Dict[str, str]:
+    @override
+    def additional_variables(cls) -> dict[str, str]:
         return cls.get_additional_variables()
 
     @classmethod
+    @override
     def needs_update_or_installation(cls) -> bool:
         if cls.manages_server():
             server = cls.get_server()
@@ -103,20 +111,22 @@ class ClientHandler(AbstractPlugin, ClientHandlerInterface):
         return False
 
     @classmethod
+    @override
     def install_or_update(cls) -> None:
         server = cls.get_server()
         if server:
             server.install_or_update()
 
     @classmethod
+    @override
     def can_start(cls, window: sublime.Window, initiating_view: sublime.View,
-                  workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> Optional[str]:
+                  workspace_folders: list[WorkspaceFolder], configuration: ClientConfig) -> str | None:
         if cls.manages_server():
             server = cls.get_server()
             if not server or server.get_status() == ServerStatus.ERROR:
-                return "{}: Error installing server dependencies.".format(cls.package_name)
+                return f"{cls.package_name}: Error installing server dependencies."
             if server.get_status() != ServerStatus.READY:
-                return "{}: Server installation in progress...".format(cls.package_name)
+                return f"{cls.package_name}: Server installation in progress..."
         message = cls.is_allowed_to_start(window, initiating_view, workspace_folders, configuration)
         if message:
             return message
@@ -126,8 +136,9 @@ class ClientHandler(AbstractPlugin, ClientHandlerInterface):
         return None
 
     @classmethod
+    @override
     def on_pre_start(cls, window: sublime.Window, initiating_view: sublime.View,
-                     workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> Optional[str]:
+                     workspace_folders: list[WorkspaceFolder], configuration: ClientConfig) -> str | None:
         extra_paths = cls.get_additional_paths()
         if extra_paths:
             original_path_raw = configuration.env.get('PATH') or ''
@@ -146,10 +157,12 @@ class ClientHandler(AbstractPlugin, ClientHandlerInterface):
     # --- ClientHandlerInterface --------------------------------------------------------------------------------------
 
     @classmethod
+    @override
     def setup(cls) -> None:
         register_plugin(cls)
 
     @classmethod
+    @override
     def cleanup(cls) -> None:
         unregister_plugin(cls)
 
@@ -157,6 +170,5 @@ class ClientHandler(AbstractPlugin, ClientHandlerInterface):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        api = ApiWrapper(ref(self))  # type: ignore
-        register_decorated_handlers(self, api)
+        api = ApiWrapper(ref(self))
         self.on_ready(api)

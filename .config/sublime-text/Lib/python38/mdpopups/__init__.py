@@ -17,6 +17,7 @@ import time
 import codecs
 import html
 import html.parser
+import sys
 import urllib
 import functools
 import base64
@@ -28,6 +29,7 @@ from .st_clean_css import clean_css
 from .st_pygments_highlight import syntax_hl as pyg_syntax_hl
 from .st_code_highlight import SublimeHighlight
 from .st_mapping import lang_map
+from .coloraide import Color
 from . import imagetint
 import re
 import os
@@ -107,6 +109,12 @@ def _can_show(view, location=-1):
         can_show = False
 
     return can_show
+
+
+if sys.version_info < (3, 4):
+    _unescape_html = html.parser.HTMLParser().unescape
+else:
+    _unescape_html = html.unescape
 
 
 ##############################
@@ -285,7 +293,7 @@ class _MdWrapper(markdown.Markdown):
                             ext.__class__.__module__, ext.__class__.__name__
                         )
                     )
-            except Exception:
+            except Exception:  # noqa: PERF203
                 # We want to gracefully continue even if an extension fails.
                 _log('Failed to load markdown module!')
                 _debug(traceback.format_exc(), ERROR)
@@ -315,11 +323,9 @@ def _get_theme(view, css=None, css_type=POPUP, template_vars=None):
 def _remove_entities(text):
     """Remove unsupported HTML entities."""
 
-    p = html.parser.HTMLParser()
-
     def repl(m):
         """Replace entities except &, <, >, and `nbsp`."""
-        return p.unescape(m.group(1))
+        return _unescape_html(m.group(1))
 
     return RE_BAD_ENTITIES.sub(repl, text)
 
@@ -480,7 +486,7 @@ def color_box(
     """Color box."""
 
     return colorbox.color_box(
-        colors, border, border2, height, width,
+        [Color(c) for c in colors], Color(border), border2, height, width,
         border_size, check_size, max_colors, alpha, border_map
     )
 
@@ -492,7 +498,7 @@ def color_box_raw(
     """Color box raw."""
 
     return colorbox.color_box_raw(
-        colors, border, border2, height, width,
+        [Color(c) for c in colors], Color(border), border2, height, width,
         border_size, check_size, max_colors, alpha, border_map
     )
 
@@ -531,8 +537,8 @@ def get_language_from_view(view):
     syntax = os.path.splitext(view.settings().get('syntax').replace('Packages/', '', 1))[0]
     keys = set(list(lang_map.keys()) + list(user_map.keys()))
     for key in keys:
-        v1 = lang_map.get(key, (tuple(), tuple()))[1]
-        v2 = user_map.get(key, (tuple(), tuple()))[1]
+        v1 = lang_map.get(key, ((), ()))[1]
+        v2 = user_map.get(key, ((), ()))[1]
         if syntax in (tuple(v2) + v1):
             lang = key
             break
@@ -893,7 +899,7 @@ def _image_parser(text):
         m2 = RE_TAG_LINK_ATTR.search(m.group('attr'))
         if m2:
             src = m2.group('path')[1:-1]
-            src = html.parser.HTMLParser().unescape(src)
+            src = _unescape_html(src)
             if urllib.parse.urlparse(src).scheme in ("http", "https"):
                 s = start + m2.start('path') + 1
                 e = start + m2.end('path') - 1

@@ -2,7 +2,7 @@
 	"ignored_packages": [
 	],
 	"font-face": "CaskaydiaCove Nerd Font Mono",
- 	"font_size": 19,
+ 	"font_size": 16,
 	"theme": "Adaptive.sublime-theme",
 	"color_scheme": "Solarized (light).sublime-color-scheme",
 	"index_files": true,

@@ -16,11 +16,13 @@ return {
         dependencies = {
             'saadparwaiz1/cmp_luasnip',
             -- 'rafamadriz/friendly-snippets',
+            'hrsh7th/cmp-omni',
             'hrsh7th/cmp-buffer',
             'hrsh7th/cmp-path',
             'hrsh7th/cmp-cmdline',
             'onsails/lspkind.nvim' -- vs-code like pictograms?
         },
+        build = "make install_jsregexp"
 
     },
     {
@@ -67,6 +69,7 @@ return {
                     end, { 'i', 's' }),
                 }),
                 sources = cmp.config.sources({
+                    { name = 'omni' }, -- Omni completions for LaTeX
                     { name = 'nvim_lsp' },
                     { name = 'luasnip'},
                     { name = 'buffer' },

@@ -1,4 +1,4 @@
-# Uncomment this to get a log of what happens with every line of this zshrc file on starting up a terminal
+# Uncomment this to get a log of what happens with every line of this zshrc file on starting up a temminal
 # set -x
 # If you come from bash you might have to change your $PATH.
 # Run tmux on startup
@@ -8,6 +8,9 @@
 
 export XCURSOR_THEME=Bibata-Modern-Classic
 export XCURSOR_SIZE=24
+export KAGGLE_API_TOKEN=KGAT_c899313a0e3666488ad1f68c6fdf2af1
+
+# export OVERSEER_CONFIG=/home/alex/Nextcloud/Personal-Programming/python/Modeling-Tools-Data/laptop_config.yml
 
 # Import colorscheme from 'wal' asynchronously
 # &   # Run the process in the background.
@@ -79,6 +82,7 @@ if [ -x /usr/bin/dircolors ]; then
 	alias grep='grep --color=auto'
 	alias fgrep='fgrep --color=auto'
 	alias egrep='egrep --color=auto'
+    alias rrm='command rm'
     alias nvim-python-example='NVIM_APPNAME="nvim-python-starter" nvim'
     alias nvim-test='NVIM_APPNAME="nvim-rebuild" nvim'
     # laptop only (for now)
@@ -99,14 +103,11 @@ export NVM_DIR="$HOME/.nvm"
 # colored GCC warnings and errors
 #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
-# Set QT themes
-export QT_QPA_PLATFORMTHEME='gt5ct'
-
 # some more ls aliases
 alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
-alias rm="/usr/local/bin/trash"
+# alias rm="/usr/local/bin/trash"
 alias sudo='sudo ' # ?????
 alias obsidian='flatpak run md.obsidian.Obsidian &'
 alias chrome='flatpak run com.google.Chrome &'
@@ -117,6 +118,7 @@ alias sublime-text="subl"
 # Removes the error message that prints for some kind of issue with curses
 alias ranger='ranger 2>/dev/null'
 alias yazi="yazi_quits"
+alias ssh="TERM=xterm-256color ssh"
 # alias neofetch="neofetch --source ~/.config/neofetch/ascii-art-neofetch/communist"
 alias vi="nvim"
 alias edit-desktop-files="~/dotfiles/.config/rofi/desktop_editor.sh"
@@ -236,59 +238,42 @@ function lazy-commit {
 function con-laptop {
     local user="$1"
 
-    if nc -z -w5 10.0.0.19 22; then
-        ssh "${user}@10.0.0.19"
+    if nc -z -w5 192.168.1.59 22; then
+        ssh "${user}@192.168.1.59"
     else
         ssh "${user}@24.218.16.45"
     fi
 }
 
-function mount-server {
-    local user="$1"
+function con-device {
+    local device="$1"
 
-    if [[ "$user" == "creiner" || "$user" == "" ]]; then
-        user="creiner"
-        local mount_point="/home/alex/Laptop-Server"
-        local server_folder="/home/creiner/Laptop-Server"
-        local port=22
-    elif [[ "$user" == "grace" ]]; then
-        local mount_point="/home/alex/Generic-Mountpoint"
-        local server_folder="/home/grace"
-        local port=22
-    elif [[ "$user" == "guest" ]]; then
-        local mount_point="/home/alex/Generic-Mountpoint"
-        local server_folder="/home/guest"
-        local port=22
-    elif [[ "$user" == "plex" ]]; then
-        user="creiner"
-        local mount_point="/home/alex/Plex-Media"
-        local server_folder="/var/lib/plexmediaserver/Library/Media"
-        local port=22
-    fi
-
-    if findmnt -rno TARGET "$mount_point"; then
-        echo "It looks like ${mount_point} is currently already being mounted: "
-        ls "$mount_point"
-        echo "Would you like to unmount this in order to mount ${server_folder}? (y/n)"
-        read user_input
-        if [[ "$user_input" == "y" ]]; then
-            umount "$mount_point"
-        elif [[ "$user_input" == "n" ]]; then
-            echo "Not unmounting. Done"
-            return 1
-        else
-            echo "Invalid answer. Please enter y or n next time you try this."
-            return 1
-        fi
-    fi
-        
-    if nc -z -w5 10.0.0.19 "$port"; then
-        sshfs -p "${port}" "${user}@10.0.0.19:${server_folder}" "${mount_point}"
+    if [[ "$device" == "steam-deck" ]]; then
+        TERM=xterm-256color ssh deck@steamdeck
+    elif [[ "$device" == "home-desktop" ]]; then
+        TERM=xterm-256color ssh alex@archibald
+    elif [[ "$device" == "server" ]]; then
+        TERM=xterm-256color ssh alex@creiner-main-server
+    elif [[ "$device" == "laptop-server"  ]]; then
+        TERM=xterm-256color ssh alex@192.168.1.62
+    elif [[ "$device" == "home-assistant" ]]; then
+        TERM=xterm-256color ssh root@homeassistant # doesn't currently work
+    elif [[ "$device" == "router" ]]; then
+        TERM=xterm-256color ssh root@192.168.1.1
+    elif [[ "$device" == 'pikvm' ]]; then 
+        TERM=xterm-256color ssh root@pikvm
+    elif [[ "$device" == 'laptop' ]]; then
+        ssh alex@192.168.1.79
     else
-        sshfs -p "${port}" "${user}@24.218.16.45:${server_folder}" "${mount_point}"
+        echo "Unrecognized device. Options are:
+- steam-deck
+- server
+- home-desktop
+- laptop-server
+- home-assistant
+- router
+- pikvm"
     fi
-
-    echo "Successfully mounted ${server_folder} at location ${mount_point}"
 }
 
 # IP address lookup
@@ -308,4 +293,10 @@ function whatsmyip ()
 	echo -n "External IP: "
 	curl -s ifconfig.me
 }
+
+alias newbackgroundplease="newbackgroundplease"
+function newbackgroundplease () {
+    /home/alex/dotfiles/.config/hypr/scripts/randomize_wallpaper.py "$1" > /dev/null
+}
+
 

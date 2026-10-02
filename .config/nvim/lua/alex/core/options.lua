@@ -59,3 +59,5 @@ opt.termguicolors = true
 opt.background = 'dark' -- makes colors that can be dark or light default to dark
 
 opt.backspace = "indent,eol,start" -- allow backspace on indent, end of line or insert mode start position
+
+

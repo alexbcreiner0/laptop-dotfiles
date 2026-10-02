@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
     pyte.control
     ~~~~~~~~~~~~
@@ -12,9 +11,8 @@
                     see AUTHORS for details.
     :license: LGPL, see LICENSE for more details.
 """
-from __future__ import unicode_literals
 
-#: *Space*: Not suprisingly -- ``" "``.
+#: *Space*: Not surprisingly -- ``" "``.
 SP = " "
 
 #: *Null*: Does nothing.
@@ -23,7 +21,7 @@ NUL = "\x00"
 #: *Bell*: Beeps.
 BEL = "\x07"
 
-#: *Backspace*: Backspace one column, but not past the begining of the
+#: *Backspace*: Backspace one column, but not past the beginning of the
 #: line.
 BS = "\x08"
 

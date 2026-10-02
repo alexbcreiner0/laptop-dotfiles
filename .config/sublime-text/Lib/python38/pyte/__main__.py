@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """
     pyte
     ~~~~
 
     Command-line tool for "disassembling" escape and CSI sequences::
 
-        $ echo -e "\e[Jfoo" | python -m pyte
+        $ echo -e "\\e[Jfoo" | python -m pyte
         ERASE_IN_DISPLAY 0
         DRAW f
         DRAW o
@@ -22,8 +21,6 @@
                     see AUTHORS for details.
     :license: LGPL, see LICENSE for more details.
 """
-
-from __future__ import unicode_literals
 
 if __name__ == "__main__":
     import sys

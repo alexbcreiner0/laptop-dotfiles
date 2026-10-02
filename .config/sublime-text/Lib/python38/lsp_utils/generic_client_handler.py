@@ -1,24 +1,28 @@
+from __future__ import annotations
+
 from ._client_handler import ClientHandler
-from .api_wrapper_interface import ApiWrapperInterface
 from .helpers import rmtree_ex
-from .server_resource_interface import ServerResourceInterface
-from abc import ABCMeta
-from LSP.plugin import ClientConfig
-from LSP.plugin import DottedDict
-from LSP.plugin import WorkspaceFolder
-from LSP.plugin.core.typing import Any, Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Any
+from typing import TYPE_CHECKING
+from typing_extensions import override
 import os
 import sublime
+
+if TYPE_CHECKING:
+    from .api_wrapper_interface import ApiWrapperInterface
+    from .server_resource_interface import ServerResourceInterface
+    from LSP.plugin import ClientConfig
+    from LSP.plugin import DottedDict
+    from LSP.plugin import WorkspaceFolder
 
 __all__ = ['GenericClientHandler']
 
 
-class GenericClientHandler(ClientHandler, metaclass=ABCMeta):
-    """
-    An generic implementation of an LSP plugin handler.
-    """
+class GenericClientHandler(ClientHandler):
+    """An generic implementation of an LSP plugin handler."""
 
-    package_name = ''
+    package_name: str = ''
     """
     The name of the released package. Also used for the name of the LSP client and for reading package settings.
 
@@ -33,21 +37,24 @@ class GenericClientHandler(ClientHandler, metaclass=ABCMeta):
     # --- ClientHandler handlers --------------------------------------------------------------------------------------
 
     @classmethod
+    @override
     def setup(cls) -> None:
         if not cls.package_name:
-            raise Exception('ERROR: [lsp_utils] package_name is required to instantiate an instance of {}'.format(cls))
+            msg = f'ERROR: [lsp_utils] package_name is required to instantiate an instance of {cls}'
+            raise Exception(msg)
         super().setup()
 
     @classmethod
+    @override
     def cleanup(cls) -> None:
 
         def run_async() -> None:
-            if os.path.isdir(cls.package_storage()):
+            if Path(cls.package_storage()).is_dir():
                 rmtree_ex(cls.package_storage())
 
         try:
-            from package_control import events  # type: ignore
-            if events.remove(cls.package_name):
+            from package_control import events  # pyright: ignore[reportUnknownVariableType, reportMissingImports]
+            if events.remove(cls.package_name):  # pyright: ignore[reportUnknownMemberType]
                 sublime.set_timeout_async(run_async, 1000)
         except ImportError:
             pass  # Package Control is not required.
@@ -55,40 +62,50 @@ class GenericClientHandler(ClientHandler, metaclass=ABCMeta):
         super().cleanup()
 
     @classmethod
+    @override
     def get_displayed_name(cls) -> str:
         """
-        Returns the name that will be shown in the ST UI (for example in the status field).
+        Return the name that will be shown in the ST UI (for example in the status field).
 
         Defaults to the value of :attr:`package_name`.
         """
         return cls.package_name
 
     @classmethod
+    @override
     def storage_path(cls) -> str:
         """
-        The storage path. Use this as your base directory to install server files. Its path is '$DATA/Package Storage'.
+        Storage path.
+
+        Use this as your base directory to install server files. Its path is '$DATA/Package Storage'.
         """
         return super().storage_path()
 
     @classmethod
+    @override
     def package_storage(cls) -> str:
         """
-        The storage path for this package. Its path is '$DATA/Package Storage/[Package_Name]'.
+        Storage path for this package.
+
+        Its path is '$DATA/Package Storage/[Package_Name]'.
         """
-        return os.path.join(cls.storage_path(), cls.package_name)
+        return str(Path(cls.storage_path(), cls.package_name))
 
     @classmethod
-    def get_command(cls) -> List[str]:
+    @override
+    def get_command(cls) -> list[str]:
         """
-        Returns a list of arguments to use to start the server. The default implementation returns combined result of
-        :meth:`binary_path()` and :meth:`get_binary_arguments()`.
+        Return a list of arguments to use to start the server.
+
+        The default implementation returns combined result of :meth:`binary_path()` and :meth:`get_binary_arguments()`.
         """
-        return [cls.binary_path()] + cls.get_binary_arguments()
+        return [cls.binary_path(), *cls.get_binary_arguments()]
 
     @classmethod
+    @override
     def binary_path(cls) -> str:
         """
-        The filesystem path to the server executable.
+        Filesystem path to the server executable.
 
         The default implementation returns `binary_path` property of the server instance (returned from
         :meth:`get_server()`), if available.
@@ -100,26 +117,29 @@ class GenericClientHandler(ClientHandler, metaclass=ABCMeta):
         return ''
 
     @classmethod
-    def get_binary_arguments(cls) -> List[str]:
+    @override
+    def get_binary_arguments(cls) -> list[str]:
         """
-        Returns a list of extra arguments to append to the `command` when starting the server.
+        Return a list of extra arguments to append to the `command` when starting the server.
 
         See :meth:`get_command()`.
         """
         return []
 
     @classmethod
-    def read_settings(cls) -> Tuple[sublime.Settings, str]:
-        filename = "{}.sublime-settings".format(cls.package_name)
+    @override
+    def read_settings(cls) -> tuple[sublime.Settings, str]:
+        filename = f"{cls.package_name}.sublime-settings"
         loaded_settings = sublime.load_settings(filename)
         changed = cls.on_settings_read(loaded_settings)
         if changed:
             sublime.save_settings(filename)
-        filepath = "Packages/{}/{}".format(cls.package_name, filename)
+        filepath = f"Packages/{cls.package_name}/{filename}"
         return (loaded_settings, filepath)
 
     @classmethod
-    def get_additional_variables(cls) -> Dict[str, str]:
+    @override
+    def get_additional_variables(cls) -> dict[str, str]:
         """
         Override to add more variables here to be expanded when reading settings.
 
@@ -134,7 +154,8 @@ class GenericClientHandler(ClientHandler, metaclass=ABCMeta):
         }
 
     @classmethod
-    def get_additional_paths(cls) -> List[str]:
+    @override
+    def get_additional_paths(cls) -> list[str]:
         """
         Override to prepend additional paths to the default PATH environment variable.
 
@@ -143,25 +164,32 @@ class GenericClientHandler(ClientHandler, metaclass=ABCMeta):
         return []
 
     @classmethod
+    @override
     def manages_server(cls) -> bool:
         """
-        Whether this handler manages a server. If the response is `True` then the :meth:`get_server()` should also be
-        implemented.
+        Whether this handler manages a server.
+
+        If the response is `True` then the :meth:`get_server()` should also be implemented.
         """
         return False
 
     @classmethod
-    def get_server(cls) -> Optional[ServerResourceInterface]:
+    @override
+    def get_server(cls) -> ServerResourceInterface | None:
         """
-        :returns: The instance of the server managed by this plugin. Only used when :meth:`manages_server()`
-                  returns `True`.
+        Instance of the server managed by this plugin.
+
+        Only used when :meth:`manages_server()` returns `True`.
         """
         return None
 
     @classmethod
+    @override
     def on_settings_read(cls, settings: sublime.Settings) -> bool:
         """
-        Called when package settings were read. Receives a `sublime.Settings` object.
+        On package settings are read.
+
+        Receives a `sublime.Settings` object.
 
         It's recommended to use :meth:`on_settings_changed()` instead if you don't need to persistent your changes to
         the disk.
@@ -171,15 +199,16 @@ class GenericClientHandler(ClientHandler, metaclass=ABCMeta):
         return False
 
     @classmethod
+    @override
     def is_allowed_to_start(
         cls,
         window: sublime.Window,
         initiating_view: sublime.View,
-        workspace_folders: List[WorkspaceFolder],
+        workspace_folders: list[WorkspaceFolder],
         configuration: ClientConfig,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
-        Determines if the session is allowed to start.
+        Determine if the session is allowed to start.
 
         :returns: A string describing the reason why we should not start a language server session, or `None` if we
                   should go ahead and start a session.
@@ -190,19 +219,20 @@ class GenericClientHandler(ClientHandler, metaclass=ABCMeta):
         # Seems unnecessary to override but it's to hide the original argument from the documentation.
         super().__init__(*args, **kwargs)
 
+    @override
     def on_ready(self, api: ApiWrapperInterface) -> None:
         """
-        Called when the instance is ready.
+        When the instance is ready.
 
         :param api: The API instance for interacting with the server.
         """
-        pass
 
+    @override
     def on_settings_changed(self, settings: DottedDict) -> None:
         """
-        Override this method to alter the settings that are returned to the server for the
-        workspace/didChangeConfiguration notification and the workspace/configuration requests.
+        Override to alter settings that are returned to the server.
+
+        Triggered for workspace/didChangeConfiguration notification and workspace/configuration requests.
 
         :param settings: The settings that the server should receive.
         """
-        pass

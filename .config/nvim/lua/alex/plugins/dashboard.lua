@@ -1,23 +1,38 @@
-function nav_configs()
-    vim.api.nvim_command('cd ~/dotfiles')
-    vim.cmd('Telescope find_files')
-end
+-- function nav_configs()
+--     vim.api.nvim_command('cd ~/dotfiles')
+--     vim.cmd('Telescope find_files')
+-- end
 
-function nav_school()
-    local success = pcall(function()
-    vim.api.nvim_command('cd ~/Laptop-Server/Current-Semester')
-    end)
-    if success then
-        vim.cmd('Telescope find_files')
-    else
-        require("notify")('Error opening folder. Has something changed about your server?')
-    end
-end
+-- function nav_school()
+--     local success = pcall(function()
+--     vim.api.nvim_command('cd ~/Laptop-Server/Current-Semester')
+--     end)
+--     if success then
+--         vim.cmd('Telescope find_files')
+--     else
+--         require("notify")('Error opening folder. Has something changed about your server?')
+--     end
+-- end
 
-function nav_vault()
-    vim.api.nvim_command('cd ' .. obsidian_path)
-    vim.cmd('Telescope find_files')
-end
+-- function nav_app_files()
+--     vim.api.nvim_command('cd /media/Big-Boy/Nextcloud/Personal-Programming/python/Modeling-Tools')
+--     vim.cmd('Telescope find_files')
+-- end
+
+-- function nav_app_config()
+--     vim.api.nvim_command('cd ~/.config/Modeling-Tools')
+--     vim.cmd('Telescope find_files')
+-- end
+
+-- function nav_models()
+--     vim.api.nvim_command('cd ~/Documents/Modeling-Tools')
+--     vim.cmd('Telescope find_files')
+-- end
+
+-- function nav_vault()
+--     vim.api.nvim_command('cd ' .. obsidian_path)
+--     vim.cmd('Telescope find_files')
+-- end
 
 function disable_indent_guide()
     vim.cmd('IBLDisable')
@@ -50,33 +65,40 @@ return {
                     enable = true,
                 },
                 -- 'groups' are literally just colors as far as I can tell
-                shortcut = {
-                    {
-                        icon_hl = '@variable',
-                        desc = 'Local Files',
-                        group = '@property',
-                        action = 'Telescope find_files',
-                        key = 'f',
-                    },
-                    -- Change this to a relative path that always leads to vault
-                    {
-                        desc = 'Obsidian Vault',
-                        group = 'Label',
-                        action = 'ObsidianSearch',
-                        key = 'v' },
-                    {
-                        desc = 'Config Files',
-                        group = 'DiagnosticHint',
-                        action = nav_configs,
-                        key = 'c',
-                    },
-                    {
-                        desc = 'School',
-                        group = 'Number',
-                        action = nav_school,
-                        key = 'd',
-                    },
-                },
+                shortcut = {}
+                    -- {
+                    --     icon_hl = '@variable',
+                    --     desc = 'Local Files',
+                    --     group = '@property',
+                    --     action = 'Telescope find_files',
+                    --     key = 't',
+                    -- },
+                    -- -- Change this to a relative path that always leads to vault
+                    -- {
+                    --     desc = 'App Files',
+                    --     group = 'Label',
+                    --     action = nav_app_files,
+                    --     key = 'f',
+                    -- },
+                    -- {
+                    --     desc = 'App Config Files',
+                    --     group = 'Label',
+                    --     action = nav_app_config,
+                    --     key = 'a',
+                    -- },
+                    -- {
+                    --     desc = 'Models',
+                    --     group = 'Label',
+                    --     action = nav_models,
+                    --     key = 'm',
+                    -- },
+                    -- {
+                    --     desc = 'Config Files',
+                    --     group = 'DiagnosticHint',
+                    --     action = nav_configs,
+                    --     key = 'c',
+                    -- },
+                -- },
             },
         }
         vim.api.nvim_create_augroup('DashboardIndentGuide', { clear = true })

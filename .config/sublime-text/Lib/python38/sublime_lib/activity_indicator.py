@@ -1,20 +1,18 @@
-import sublime
-
+from __future__ import annotations
+from abc import ABCMeta, abstractmethod
+from enum import IntEnum
+from threading import Lock
+from types import TracebackType
 from uuid import uuid4
 
-from ._compat.typing import Optional, Union, Callable, Any
-from types import TracebackType, MethodType
-from abc import ABCMeta, abstractmethod
-from functools import partial
-import weakref
+import sublime
 
-from threading import Lock
-
+from ._util.weak_method import weak_method
 
 __all__ = ['ActivityIndicator']
 
 
-class StatusTarget(metaclass=ABCMeta):  # pragma: no cover
+class StatusTarget(metaclass=ABCMeta):
     @abstractmethod
     def set(self, message: str) -> None:
         ...
@@ -26,7 +24,7 @@ class StatusTarget(metaclass=ABCMeta):  # pragma: no cover
 
 class WindowTarget(StatusTarget):
     def __init__(self, window: sublime.Window) -> None:
-        self.window = window
+        self.window: sublime.Window = window
 
     def set(self, message: str) -> None:
         self.window.status_message(message)
@@ -36,10 +34,10 @@ class WindowTarget(StatusTarget):
 
 
 class ViewTarget(StatusTarget):
-    def __init__(self, view: sublime.View, key: Optional[str] = None) -> None:
-        self.view = view
+    def __init__(self, view: sublime.View, key: str | None = None) -> None:
+        self.view: sublime.View = view
         if key is None:
-            self.key = '_{!s}'.format(uuid4())
+            self.key: str = f"_{uuid4()!s}"
         else:
             self.key = key
 
@@ -48,20 +46,6 @@ class ViewTarget(StatusTarget):
 
     def clear(self) -> None:
         self.view.erase_status(self.key)
-
-
-def _weak_method(method: Callable) -> Callable:
-    assert isinstance(method, MethodType)
-    self_ref = weakref.ref(method.__self__)
-    function_ref = weakref.ref(method.__func__)
-
-    def wrapped(*args: Any, **kwargs: Any) -> Any:
-        self = self_ref()
-        function = function_ref()
-        if self is not None and function is not None:
-            return function(self, *args, **kwargs)
-
-    return wrapped
 
 
 class ActivityIndicator:
@@ -76,36 +60,41 @@ class ActivityIndicator:
 
     .. versionadded:: 1.4
     """
-    width = 10  # type: int
-    interval = 100  # type: int
 
-    _target = None  # type: StatusTarget
-    _ticks = 0  # type: int
-    _lock = None  # type: Lock
-    _running = False  # type: bool
-    _invocation_id = 0  # type: int
+    class State(IntEnum):
+        STOPPED = 0
+        STOPPING = 1
+        RUNNING = 2
+
+    frames: str | list[str] = "⣷⣯⣟⡿⢿⣻⣽⣾"
+    interval: int = 100
 
     def __init__(
         self,
-        target: Union[StatusTarget, sublime.View, sublime.Window],
-        label: Optional[str] = None,
+        target: StatusTarget | sublime.View | sublime.Window,
+        label: str | None = None,
     ) -> None:
-        self.label = label
+        self.label: str | None = label
 
         if isinstance(target, sublime.View):
-            self._target = ViewTarget(target)
+            self._target: StatusTarget = ViewTarget(target)
         elif isinstance(target, sublime.Window):
             self._target = WindowTarget(target)
         else:
             self._target = target
 
-        self._lock = Lock()
+        self._lock: Lock = Lock()
+        self._state: int = self.State.STOPPED
+        self._ticks: int = 0
+        self._tick_ref = weak_method(self._tick)
 
     def __del__(self) -> None:
+        self.stop()
         self._target.clear()
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> ActivityIndicator:
         self.start()
+        return self
 
     def __exit__(
         self,
@@ -122,15 +111,14 @@ class ActivityIndicator:
         :raise ValueError: if the indicator is already running.
         """
         with self._lock:
-            if self._running:
-                raise ValueError('Timer is already running')
+            if self._state == self.State.RUNNING:
+                raise ValueError("Activity indicator is already running!")
+            elif self._state == self.State.STOPPING:
+                self._state = self.State.RUNNING
             else:
-                self._running = True
                 self.update()
-                sublime.set_timeout(
-                    partial(self._run, self._invocation_id),
-                    self.interval
-                )
+                sublime.set_timeout(self._tick_ref, self.interval)
+                self._state = self.State.RUNNING
 
     def stop(self) -> None:
         """
@@ -139,19 +127,17 @@ class ActivityIndicator:
         If the indicator is not running, do nothing.
         """
         with self._lock:
-            if self._running:
-                self._running = False
-                self._invocation_id += 1
-        self._target.clear()
+            if self._state != self.State.STOPPED:
+                self._state = self.State.STOPPING
 
-    def _run(self, invocation_id: int) -> None:
+    def _tick(self) -> None:
         with self._lock:
-            if invocation_id == self._invocation_id:
+            if self._state == self.State.RUNNING:
                 self.tick()
-                sublime.set_timeout(
-                    partial(_weak_method(self._run), invocation_id),
-                    self.interval
-                )
+                sublime.set_timeout(self._tick_ref, self.interval)
+                return
+            self._state = self.State.STOPPED
+        self._target.clear()
 
     def tick(self) -> None:
         self._ticks += 1
@@ -161,12 +147,7 @@ class ActivityIndicator:
         self._target.set(self.render(self._ticks))
 
     def render(self, ticks: int) -> str:
-        status = ticks % (2 * self.width)
-        before = min(status, (2 * self.width) - status)
-        after = self.width - before
-
-        return "{}[{}={}]".format(
-            self.label + ' ' if self.label else '',
-            " " * before,
-            " " * after,
-        )
+        text = self.frames[ticks % len(self.frames)]
+        if self.label:
+            text += " " + self.label
+        return text

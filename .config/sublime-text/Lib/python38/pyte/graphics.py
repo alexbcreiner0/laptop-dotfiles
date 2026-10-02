@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
     pyte.graphics
     ~~~~~~~~~~~~~
@@ -13,8 +12,6 @@
     :license: LGPL, see LICENSE for more details.
 """
 
-from __future__ import unicode_literals
-
 #: A mapping of ANSI text style codes to style names, "+" means the:
 #: attribute is set, "-" -- reset; example:
 #:
@@ -26,11 +23,13 @@ TEXT = {
     1: "+bold",
     3: "+italics",
     4: "+underscore",
+    5: "+blink",
     7: "+reverse",
     9: "+strikethrough",
     22: "-bold",
     23: "-italics",
     24: "-underscore",
+    25: "-blink",
     27: "-reverse",
     29: "-strikethrough",
 }
@@ -57,17 +56,16 @@ FG_ANSI = {
 FG = FG_ANSI
 
 #: A mapping of non-standard ``aixterm`` foreground color codes to
-#: color names. These are high intensity colors and thus should be
-#: complemented by ``+bold``.
+#: color names. These are high intensity colors.
 FG_AIXTERM = {
-    90: "black",
-    91: "red",
-    92: "green",
-    93: "brown",
-    94: "blue",
-    95: "magenta",
-    96: "cyan",
-    97: "white"
+    90: "brightblack",
+    91: "brightred",
+    92: "brightgreen",
+    93: "brightbrown",
+    94: "brightblue",
+    95: "brightmagenta",
+    96: "brightcyan",
+    97: "brightwhite"
 }
 
 #: A mapping of ANSI background color codes to color names.
@@ -92,17 +90,16 @@ BG_ANSI = {
 BG = BG_ANSI
 
 #: A mapping of non-standard ``aixterm`` background color codes to
-#: color names. These are high intensity colors and thus should be
-#: complemented by ``+bold``.
+#: color names. These are high intensity colors.
 BG_AIXTERM = {
-    100: "black",
-    101: "red",
-    102: "green",
-    103: "brown",
-    104: "blue",
-    105: "magenta",
-    106: "cyan",
-    107: "white"
+    100: "brightblack",
+    101: "brightred",
+    102: "brightgreen",
+    103: "brightbrown",
+    104: "brightblue",
+    105: "bfightmagenta",
+    106: "brightcyan",
+    107: "brightwhite"
 }
 
 #: SGR code for foreground in 256 or True color mode.
@@ -113,7 +110,7 @@ BG_256 = 48
 
 #: A table of 256 foreground or background colors.
 # The following code is part of the Pygments project (BSD licensed).
-FG_BG_256 = [
+_FG_BG_256 = [
     (0x00, 0x00, 0x00),  # 0
     (0xcd, 0x00, 0x00),  # 1
     (0x00, 0xcd, 0x00),  # 2
@@ -139,11 +136,11 @@ for i in range(216):
     r = valuerange[(i // 36) % 6]
     g = valuerange[(i // 6) % 6]
     b = valuerange[i % 6]
-    FG_BG_256.append((r, g, b))
+    _FG_BG_256.append((r, g, b))
 
 # colors 232..255: grayscale
 for i in range(24):
     v = 8 + i * 10
-    FG_BG_256.append((v, v, v))
+    _FG_BG_256.append((v, v, v))
 
-FG_BG_256 = ["{0:02x}{1:02x}{2:02x}".format(r, g, b) for r, g, b in FG_BG_256]
+FG_BG_256 = ["{0:02x}{1:02x}{2:02x}".format(r, g, b) for r, g, b in _FG_BG_256]

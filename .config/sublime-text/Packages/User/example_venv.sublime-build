@@ -1,0 +1,27 @@
+{
+	"target": "terminus_exec",
+	"cancel": "terminus_cancel_build",
+	"focus": true,
+
+	"cmd": ["/home/alex/Nextcloud/Current-Semester/CS1/Class-Demo/project/Cookbook-App/project-venv/bin/python3", "-u", "$file"],
+	"file_regex": "^[ ]*File \"(...*?)\", line ([0-9]*)",
+	"selector": "source.python",
+
+	"env": {"PYTHONIOENCODING": "utf-8"},
+
+	"windows": {
+		"cmd": ["py", "-u", "$file"],
+	},
+
+	"variants":
+	[
+		{
+			"name": "Syntax Check",
+			"cmd": ["/home/alex/Nextcloud/Current-Semester/CS1/Class-Demo/project/Cookbook-App/project-venv/bin/python3", "-m", "py_compile", "$file"],
+
+			"windows": {
+				"cmd": ["py", "-m", "py_compile", "$file"],
+			}
+		}
+	]
+}

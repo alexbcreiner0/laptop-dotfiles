@@ -1,10 +1,11 @@
+from __future__ import annotations
+from typing import Any
+
 import sublime
 
 from .view_stream import ViewStream
 from .view_utils import set_view_options, validate_view_options
 from ._util.guard import define_guard
-
-from ._compat.typing import Any
 
 __all__ = ['Panel', 'OutputPanel']
 
@@ -26,14 +27,14 @@ class Panel():
     """
 
     def __init__(self, window: sublime.Window, panel_name: str):
-        self.window = window
-        self.panel_name = panel_name
+        self.window: sublime.Window = window
+        self.panel_name: str = panel_name
 
         self._checkExists()
 
     def _checkExists(self) -> None:
         if not self.exists():
-            raise ValueError("Panel {} does not exist.".format(self.panel_name))
+            raise ValueError(f"Panel {self.panel_name} does not exist.")
 
     @define_guard
     def guard_exists(self) -> None:
@@ -91,7 +92,7 @@ class OutputPanel(ViewStream, Panel):
         follow_cursor: bool = False,
         unlisted: bool = False,
         **kwargs: Any
-    ) -> 'OutputPanel':
+    ) -> OutputPanel:
         """Create a new output panel with the given `name` in the given `window`.
 
         If `kwargs` are given,
@@ -120,7 +121,7 @@ class OutputPanel(ViewStream, Panel):
         ViewStream.__init__(self, view, force_writes=force_writes, follow_cursor=follow_cursor)
         Panel.__init__(self, window, "output." + name)
 
-        self.name = name
+        self.name: str = name
 
     @property
     def full_name(self) -> str:

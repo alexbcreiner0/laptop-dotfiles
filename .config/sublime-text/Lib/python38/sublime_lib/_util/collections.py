@@ -1,30 +1,25 @@
-from collections.abc import Mapping, Sequence
+from __future__ import annotations
+from collections.abc import Iterable, Mapping
+from typing import TYPE_CHECKING
 
-from .._compat.typing import Callable, Dict, Iterable, TypeVar, Union
-
-
-_V = TypeVar('_V')
-_Result = TypeVar('_Result')
-_Default = TypeVar('_Default')
-_Value = Union[bool, int, float, str, list, dict, None]
+if TYPE_CHECKING:
+    from sublime_types import Value
+    from typing import Callable
 
 
-__all__ = ['projection', 'get_selector', 'isiterable', 'ismapping', 'is_sequence_not_str']
+__all__ = ['projection', 'get_selector']
 
 
-def projection(
-    d: Dict[str, _V],
-    keys: Union[Dict[str, str], Iterable[str]]
-) -> Dict[str, _V]:
+def projection(d: Mapping[str, Value], keys: Mapping[str, str] | Iterable[str]) -> Value:
     """
-    Return a new :class:`dict` with keys of ``d`` restricted to values in ``keys``.
+    Return a new :class:`Mapping` with keys of ``d`` restricted to values in ``keys``.
 
     .. code-block:: python
 
        >>> projection({'a': 1, 'b': 2}, ['b'])
        {'b': 2}
 
-    If ``keys`` is a :class:`dict`, then it maps keys of the original dict to
+    If ``keys`` is a :class:`Mapping`, then it maps keys of the original Mapping to
     keys of the result:
 
     .. code-block:: python
@@ -32,7 +27,7 @@ def projection(
        >>> projection({'a': 1, 'b': 2}, {'b': 'c'})
        {'c': 2}
     """
-    if isinstance(keys, dict):
+    if isinstance(keys, Mapping):
         return {
             new_key: d[original_key]
             for original_key, new_key in keys.items()
@@ -46,30 +41,17 @@ def projection(
         }
 
 
-def get_selector(selector: object, default_value: object = None) -> Callable:  # noqa: F811
+def get_selector(
+    selector: Callable[[Mapping[str, Value]], Value] | Iterable[str] | str,
+    default_value: Value = None
+) -> Callable[[Mapping[str, Value]], Value]:
     if callable(selector):
         return selector
     elif isinstance(selector, str):
         return lambda this: this.get(selector, default_value)
-    elif isiterable(selector):
-        return lambda this: projection(this, selector)  # type: ignore
+    elif isinstance(selector, Iterable):
+        return lambda this: projection(this, selector)
     else:
         raise TypeError(
             'The selector should be a function, string, or iterable of strings.'
         )
-
-
-def isiterable(obj: object) -> bool:
-    try:
-        iter(obj)  # type: ignore
-        return True
-    except TypeError:
-        return False
-
-
-def ismapping(obj: object) -> bool:
-    return isinstance(obj, Mapping)
-
-
-def is_sequence_not_str(obj: object) -> bool:
-    return isinstance(obj, Sequence) and not isinstance(obj, str)

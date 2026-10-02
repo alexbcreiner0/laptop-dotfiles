@@ -24,6 +24,7 @@ Original code has been heavily modified by Isaac Muse <isaacmuse@gmail.com> for 
 """
 import sublime
 import re
+import os
 from .st_mapping import lang_map
 
 RE_TAIL = re.compile(r'(?:\r\n|(?!\r\n)[\n\r])*\Z')
@@ -232,18 +233,30 @@ class SublimeHighlight(object):
         keys = set(user_map.keys()) | (set(plugin_map.keys()) | set(lang_map.keys()))
         loaded = False
         for key in keys:
-            v = lang_map.get(key, (tuple(), tuple()))
-            plugin_v = plugin_map.get(key, (tuple(), tuple()))
-            user_v = user_map.get(key, (tuple(), tuple()))
+            v = lang_map.get(key, ((), ()))
+            plugin_v = plugin_map.get(key, ((), ()))
+            user_v = user_map.get(key, ((), ()))
             if lang in (tuple(user_v[0]) + plugin_v[0] + v[0]):
                 for l in (tuple(user_v[1]) + plugin_v[1] + v[1]):
+                    if l.startswith('scope:'):
+                        scope = l[6:]  # remove "scope:" prefix
+                        if self.set_syntax_by_scope(scope):
+                            loaded = True
+                            break
+                        continue
+
                     for ext in ST_LANGUAGES:
-                        sytnax_file = 'Packages/{}{}'.format(l, ext)
-                        try:
-                            sublime.load_binary_resource(sytnax_file)
-                        except Exception:
+                        syntax_file = 'Packages/{}{}'.format(l, ext)
+                        base = os.path.basename(syntax_file)
+                        results = set(sublime.find_resources(base))
+                        if syntax_file in results:
+                            try:
+                                sublime.load_binary_resource(syntax_file)
+                            except Exception:
+                                continue
+                        else:
                             continue
-                        self.view.set_syntax_file(sytnax_file)
+                        self.view.assign_syntax(syntax_file)
                         loaded = True
                         break
                     if loaded:
@@ -251,18 +264,32 @@ class SublimeHighlight(object):
             if loaded:
                 break
         if not loaded:
+            # Use "source.LANG" and "text.LANG" as fallbacks if possible
+            for scope in ('source.' + lang, 'text.' + lang):
+                if self.set_syntax_by_scope(scope):
+                    loaded = True
+                    break
+        if not loaded:
             # Default to plain text
             for ext in ST_LANGUAGES:
                 # Just in case text one day switches to 'sublime-syntax'
-                sytnax_file = 'Packages/Text/Plain text{}'.format(ext)
-                try:
-                    sublime.load_binary_resource(sytnax_file)
-                except Exception:
+                syntax_file = 'Packages/Text/Plain text{}'.format(ext)
+                base = os.path.basename(syntax_file)
+                results = set(sublime.find_resources(base))
+                if syntax_file in results:
+                    try:
+                        sublime.load_binary_resource(syntax_file)
+                    except Exception:
+                        continue
+                else:
                     continue
-                self.view.set_syntax_file(sytnax_file)
+                self.view.assign_syntax(syntax_file)
 
-    def syntax_highlight(self, src, lang, hl_lines=[], inline=False, no_wrap=False, code_wrap=False, plugin_map=None):
+    def syntax_highlight(self, src, lang, hl_lines=None, inline=False, no_wrap=False, code_wrap=False, plugin_map=None):
         """Syntax Highlight."""
+
+        if hl_lines is None:
+            hl_lines = []
 
         self.set_view(RE_TAIL.sub('', src), 'text' if not lang else lang, plugin_map)
         self.defaults = self.view.style()
@@ -276,3 +303,12 @@ class SublimeHighlight(object):
         self.html = []
         self.write_body()
         return ''.join(self.html)
+
+    def set_syntax_by_scope(self, scope):
+        """Set syntax by the `scope`. Only works in ST 4."""
+        if hasattr(sublime, 'find_syntax_by_scope'):
+            syntaxes = sublime.find_syntax_by_scope(scope)
+            if syntaxes:
+                self.view.assign_syntax(syntaxes[0])
+                return True
+        return False

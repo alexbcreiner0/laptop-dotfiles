@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 from .generic_client_handler import GenericClientHandler
 from .server_npm_resource import ServerNpmResource
-from .server_resource_interface import ServerResourceInterface
-from LSP.plugin import ClientConfig
-from LSP.plugin import WorkspaceFolder
-from LSP.plugin.core.typing import Dict, List, Optional, Tuple
-from os import path
-import sublime
+from pathlib import Path
+from typing import TYPE_CHECKING
+from typing_extensions import override
+
+if TYPE_CHECKING:
+    from .server_resource_interface import ServerResourceInterface
+    from LSP.plugin import ClientConfig
+    from LSP.plugin import WorkspaceFolder
+    import sublime
 
 __all__ = ['NpmClientHandler']
 
@@ -16,23 +21,24 @@ class NpmClientHandler(GenericClientHandler):
 
     Automatically manages an NPM-based server by installing and updating it in the package storage directory.
     """
-    __server = None  # type: Optional[ServerNpmResource]
 
-    server_directory = ''
+    __server: ServerNpmResource | None = None
+
+    server_directory: str = ''
     """
     The path to the server source directory, relative to the root directory of this package.
 
     :required: Yes
     """
 
-    server_binary_path = ''
+    server_binary_path: str = ''
     """
     The path to the server "binary", relative to plugin's storage directory.
 
     :required: Yes
     """
 
-    skip_npm_install = False
+    skip_npm_install: bool = False
     """
     Whether to skip the step that runs "npm install" in case the server doesn't need any dependencies.
 
@@ -42,10 +48,11 @@ class NpmClientHandler(GenericClientHandler):
     # --- NpmClientHandler handlers -----------------------------------------------------------------------------------
 
     @classmethod
-    def minimum_node_version(cls) -> Tuple[int, int, int]:
+    def minimum_node_version(cls) -> tuple[int, int, int]:
         """
-        .. deprecated:: 2.1.0
-           Use :meth:`required_node_version` instead.
+        .. deprecated:: 2.1.0.
+
+        Use :meth:`required_node_version` instead.
 
         The minimum Node version required for this plugin.
 
@@ -56,7 +63,7 @@ class NpmClientHandler(GenericClientHandler):
     @classmethod
     def required_node_version(cls) -> str:
         """
-        The NPM semantic version (typically a range) specifying which version of Node is required for this plugin.
+        NPM semantic version (typically a range) specifying which version of Node is required for this plugin.
 
         Examples:
          - `16.1.1` - only allows a single version
@@ -68,14 +75,17 @@ class NpmClientHandler(GenericClientHandler):
         Also see more examples and a testing playground at https://semver.npmjs.com/ .
 
         :returns: Required NPM semantic version. Defaults to :code:`0.0.0` which means "no restrictions".
+
         """
         return '0.0.0'
 
+    # --- GenericClientHandler handlers -------------------------------------------------------------------------------
+
     @classmethod
-    def get_additional_variables(cls) -> Dict[str, str]:
+    @override
+    def get_additional_variables(cls) -> dict[str, str]:
         """
-        Overrides :meth:`GenericClientHandler.get_additional_variables`, providing additional variable for use in the
-        settings.
+        Provide additional variable for use in the settings.
 
         The additional variables are:
 
@@ -94,30 +104,33 @@ class NpmClientHandler(GenericClientHandler):
         return variables
 
     @classmethod
-    def get_additional_paths(cls) -> List[str]:
+    @override
+    def get_additional_paths(cls) -> list[str]:
         node_bin = cls._node_bin()
         if node_bin:
-            node_path = path.dirname(node_bin)
+            node_path = Path(node_bin).parent
             if node_path:
-                return [node_path]
+                return [str(node_path)]
         return []
 
-    # --- GenericClientHandler handlers -------------------------------------------------------------------------------
+    @classmethod
+    @override
+    def get_command(cls) -> list[str]:
+        return [cls._node_bin(), cls.binary_path(), *cls.get_binary_arguments()]
 
     @classmethod
-    def get_command(cls) -> List[str]:
-        return [cls._node_bin(), cls.binary_path()] + cls.get_binary_arguments()
-
-    @classmethod
-    def get_binary_arguments(cls) -> List[str]:
+    @override
+    def get_binary_arguments(cls) -> list[str]:
         return ['--stdio']
 
     @classmethod
+    @override
     def manages_server(cls) -> bool:
         return True
 
     @classmethod
-    def get_server(cls) -> Optional[ServerResourceInterface]:
+    @override
+    def get_server(cls) -> ServerResourceInterface | None:
         if not cls.__server:
             cls.__server = ServerNpmResource.create({
                 'package_name': cls.package_name,
@@ -132,13 +145,15 @@ class NpmClientHandler(GenericClientHandler):
         return cls.__server
 
     @classmethod
+    @override
     def cleanup(cls) -> None:
         cls.__server = None
         super().cleanup()
 
     @classmethod
+    @override
     def can_start(cls, window: sublime.Window, initiating_view: sublime.View,
-                  workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> Optional[str]:
+                  workspace_folders: list[WorkspaceFolder], configuration: ClientConfig) -> str | None:
         reason = super().can_start(window, initiating_view, workspace_folders, configuration)
         if reason:
             return reason
@@ -162,7 +177,7 @@ class NpmClientHandler(GenericClientHandler):
         return ''
 
     @classmethod
-    def _node_env(cls) -> Optional[Dict[str, str]]:
+    def _node_env(cls) -> dict[str, str] | None:
         if cls.__server:
             return cls.__server.node_env
         return None

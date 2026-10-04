@@ -75,6 +75,13 @@ hl.window_rule({
 })
 
 hl.window_rule({
+    name = "zotero-plugin-manager",
+    match = { class = "Zotero", title = "Plugins Manager" },
+    float = true,
+    size = { 1060, 500 },
+})
+
+hl.window_rule({
     name = "gnome-calendar-floating",
     match = { class = "org.gnome.Calendar" },
     float = true,

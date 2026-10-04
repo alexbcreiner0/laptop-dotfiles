@@ -35,9 +35,10 @@ effects         = true          # visual weather effects
 
 [nightlight]
 enabled = true
-force = true
+force = false
 temperature_day = 6500
-temperature_night = 2500
+# why is it thinking its night????
+temperature_night = 4000
 
 [widget.updates]
 type = "yuuto/arch-updater:widget"

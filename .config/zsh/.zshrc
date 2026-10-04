@@ -9,6 +9,7 @@
 export XCURSOR_THEME=Bibata-Modern-Classic
 export XCURSOR_SIZE=24
 export KAGGLE_API_TOKEN=KGAT_c899313a0e3666488ad1f68c6fdf2af1
+export MANPAGER='nvim +Man!'
 
 # export OVERSEER_CONFIG=/home/alex/Nextcloud/Personal-Programming/python/Modeling-Tools-Data/laptop_config.yml
 

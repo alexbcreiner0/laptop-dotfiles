@@ -1,12 +1,12 @@
 format = """
-[](#091610)\
+[](#0a0814)\
 $python\
 $username\
-[](bg:#66572E fg:#091610)\
+[](bg:#4760B8 fg:#0a0814)\
 $directory\
-[](fg:#66572E bg:#455345)\
+[](fg:#4760B8 bg:#6CA9F1)\
 $time\
-[ ](fg:#455345)\
+[ ](fg:#6CA9F1)\
 $character
 """
 
@@ -17,16 +17,16 @@ add_newline = true
 # You can also replace your username with a neat symbol like  to save some space
 [username]
 show_always = true
-style_user = "bg:#091610"
-style_root = "bg:#091610"
+style_user = "bg:#0a0814"
+style_root = "bg:#0a0814"
 format = '[$user ]($style)'
 
 [python]
-style = "bg:#091610"
+style = "bg:#0a0814"
 format = '[(\($virtualenv\) )]($style)'
 
 [directory]
-style = "bg:#66572E"
+style = "bg:#4760B8"
 format = "[ $path ]($style)"
 truncation_length = 3
 truncation_symbol = "…/"
@@ -46,15 +46,15 @@ truncation_symbol = "…/"
 
 [git_branch]
 symbol = ""
-style = "bg:#455345"
+style = "bg:#6CA9F1"
 format = '[ $symbol $branch ]($style)'
 
 [git_status]
-style = "bg:#455345"
+style = "bg:#6CA9F1"
 format = '[$all_status$ahead_behind ]($style)'
 
 [time]
 disabled = false
 time_format = "%R" # Hour:Minute Format
-style = "bg:#455345"
+style = "bg:#6CA9F1"
 format = '[ $time ]($style)'

@@ -8,26 +8,26 @@ LockSidebar=true
 ShowSidebar=true
 
 [Recent Files]
-File1[$e]=$HOME/Nextcloud/Current-Semester/CS1/Discussion Assignments/Discussion Assignment 11.pdf
-File10[$e]=$HOME/Nextcloud/Current-Semester/Data Structures/MyLectures/lecture2/lecture2.pdf
-File2[$e]=$HOME/Downloads/function-problems-1.pdf
-File3[$e]=$HOME/Nextcloud/Current-Semester/CS1/Discussion Assignments/Discussion Assignment 12.pdf
-File4[$e]=$HOME/Downloads/function-problems-3.pdf
-File5[$e]=$HOME/Downloads/polynomial-hierarchy.pdf
-File6[$e]=$HOME/Nextcloud/Current-Semester/LTE Presentation/IDA-INDEP-August-2026.pdf
-File7[$e]=$HOME/Nextcloud/Current-Semester/Complexity/github_classroom50_setup.pdf
-File8[$e]=$HOME/Nextcloud/Current-Semester/Data Structures/CSCI1103 Assignment 0 - Setup.pdf
-File9[$e]=$HOME/Nextcloud/Current-Semester/Data Structures/MyLecturesMB/lecture1/lecture1_cxx_review_beamer.pdf
-Name1[$e]=Discussion Assignment 11.pdf
-Name10[$e]=lecture2.pdf
-Name2[$e]=function-problems-1.pdf
-Name3[$e]=Discussion Assignment 12.pdf
-Name4[$e]=function-problems-3.pdf
-Name5[$e]=polynomial-hierarchy.pdf
-Name6[$e]=IDA-INDEP-August-2026.pdf
-Name7[$e]=github_classroom50_setup.pdf
-Name8[$e]=CSCI1103 Assignment 0 - Setup.pdf
-Name9[$e]=lecture1_cxx_review_beamer.pdf
+File1[$e]=$HOME/Nextcloud/Current-Semester/CS1/Discussion Assignments/Discussion Assignment 12.pdf
+File10[$e]=$HOME/Nextcloud/PDFs/Staging/Theory of production _ a long-period analysis -- Heinz Dieter Kurz; Neri Salvadori -- 1, 1995 -- Cambridge University Press (Virtual Publishing) -- 9780511625770 -- dcebe8b2d5dc015ce1be5c0d366aa025 -- Anna’s Archive.djvu
+File2[$e]=$HOME/Downloads/function-problems-3.pdf
+File3[$e]=$HOME/Downloads/polynomial-hierarchy.pdf
+File4[$e]=$HOME/Nextcloud/Current-Semester/LTE Presentation/IDA-INDEP-August-2026.pdf
+File5[$e]=$HOME/Nextcloud/Current-Semester/Complexity/github_classroom50_setup.pdf
+File6[$e]=$HOME/Nextcloud/Current-Semester/Data Structures/CSCI1103 Assignment 0 - Setup.pdf
+File7[$e]=$HOME/Nextcloud/Current-Semester/Data Structures/MyLecturesMB/lecture1/lecture1_cxx_review_beamer.pdf
+File8[$e]=$HOME/Nextcloud/Current-Semester/Data Structures/MyLectures/lecture2/lecture2.pdf
+File9[$e]=$HOME/Nextcloud/PDFs/Staging/Linear Programming and Economic Analysis -- Robert Dorfman & Paul A_ Samuelson & Robert M_ Solow -- INscribe Digital, [N_p_], 2012 -- Dover -- 9780486142111 -- 96710b6107593d815775081383cd1d0a -- Anna’s Archive.epub
+Name1[$e]=Discussion Assignment 12.pdf
+Name10[$e]=Theory of production _ a long-period analysis -- Heinz Dieter Kurz; Neri Salvadori -- 1, 1995 -- Cambridge University Press (Virtual Publishing) -- 9780511625770 -- dcebe8b2d5dc015ce1be5c0d366aa025 -- Anna’s Archive.djvu
+Name2[$e]=function-problems-3.pdf
+Name3[$e]=polynomial-hierarchy.pdf
+Name4[$e]=IDA-INDEP-August-2026.pdf
+Name5[$e]=github_classroom50_setup.pdf
+Name6[$e]=CSCI1103 Assignment 0 - Setup.pdf
+Name7[$e]=lecture1_cxx_review_beamer.pdf
+Name8[$e]=lecture2.pdf
+Name9[$e]=Linear Programming and Economic Analysis -- Robert Dorfman & Paul A_ Samuelson & Robert M_ Solow -- INscribe Digital, [N_p_], 2012 -- Dover -- 9780486142111 -- 96710b6107593d815775081383cd1d0a -- Anna’s Archive.epub
 
 [UiSettings]
 ColorScheme=BreezeDark
